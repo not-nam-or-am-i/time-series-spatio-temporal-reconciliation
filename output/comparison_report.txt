@@ -1,0 +1,128 @@
+========================================
+FORECAST COMPARISON REPORT
+SARIMAX, Random Forest, LightGBM, and ETS
+========================================
+
+Generated: 2026-03-25 00:54:11 
+
+METHODS COMPARED:
+-----------------
+1. PERS - Persistence baseline
+2. SARIMAX_BASE - SARIMAX with NWP exogenous variable
+3. RF_BASE - Random Forest (NWP + lag + calendar features)
+4. LGBM_BASE - LightGBM (NWP + lag + calendar features)
+5. ETS_BASE - ETS (per-level via thief, NWP hybrid at L2)
+6. CTWLSV_SARIMAX - Cross-temporal WLSV reconciled SARIMAX
+7. CTWLSV_RF - Cross-temporal WLSV reconciled RF
+8. CTWLSV_LGBM - Cross-temporal WLSV reconciled LightGBM
+9. CTWLSV_ETS - Cross-temporal WLSV reconciled ETS
+10. CTBU_SARIMAX - Bottom-up temporal reconciled SARIMAX
+11. CTBU_RF - Bottom-up temporal reconciled RF
+12. CTBU_LGBM - Bottom-up temporal reconciled LightGBM
+13. CTBU_ETS - Bottom-up temporal reconciled ETS
+
+METRICS:
+--------
+- nRMSE: Normalized RMSE (%)
+- nMBE: Normalized Mean Bias Error (%)
+- Skill: Improvement over PERS (%)
+- SMAPE: Symmetric MAPE (%)
+
+HIERARCHY LEVELS:
+-----------------
+- L0: Total (1 series)
+- L1: Regional aggregates (5 series)
+- L2: Bottom-level stations (318 series)
+
+TEMPORAL RESOLUTION:
+--------------------
+- Hourly: k=1 (48 forecasts per replication)
+- Daily: k=24 (2 forecasts per replication)
+
+========================================
+RESULTS TABLES
+========================================
+
+Table 1: Mean nRMSE (%)
+-----------------------
+         method L0_Hourly L0_Daily L1_Hourly L1_Daily L2_Hourly L2_Daily
+       ctbu_ets     22.74    12.97     29.43    16.37     43.67    21.58
+      ctbu_lgbm     25.96    13.49     32.99    17.37     51.79    25.38
+        ctbu_rf     26.50    14.01     32.93    17.59     46.94    23.19
+   ctbu_sarimax     33.13    11.63     38.38    15.62     55.06    23.47
+     ctwlsv_ets     22.83    13.15     29.47    16.56     43.66    21.71
+    ctwlsv_lgbm     25.77    13.45     32.83    17.34     51.71    25.37
+      ctwlsv_rf     26.38    13.97     32.82    17.55     46.87    23.17
+ ctwlsv_sarimax     32.69    13.42     38.33    17.79     55.40    25.73
+       ets_base     27.57    17.10     33.91    19.84     53.46    24.83
+      lgbm_base     25.11    13.52     35.67    18.94     51.79    25.38
+           pers     34.60    20.22     43.13    24.56     59.74    30.65
+        rf_base     24.37    13.15     32.44    17.45     46.94    23.19
+   sarimax_base     26.66    12.58     38.58    18.15     55.06    23.47
+
+
+Table 2: Mean Skill Score (%)
+-----------------------------
+         method L0_Hourly L0_Daily L1_Hourly L1_Daily L2_Hourly L2_Daily
+       ctbu_ets     34.27    35.85     31.77    33.40     27.04    29.65
+      ctbu_lgbm     24.99    33.31     23.26    28.91     13.12    16.72
+        ctbu_rf     23.42    30.71     23.35    28.15     21.34    24.10
+   ctbu_sarimax      4.24    42.48     11.57    36.52      8.19    23.65
+     ctwlsv_ets     34.02    34.96     31.70    32.59     27.05    29.24
+    ctwlsv_lgbm     25.51    33.48     23.63    29.04     13.26    16.78
+      ctwlsv_rf     23.77    30.90     23.62    28.29     21.46    24.19
+ ctwlsv_sarimax      5.53    33.63     11.99    28.42      7.73    16.56
+       ets_base     20.31    15.43     21.59    19.36     11.33    19.12
+      lgbm_base     27.45    33.15     17.11    22.65     13.12    16.72
+           pers      0.00     0.00      0.00     0.00      0.00     0.00
+        rf_base     29.58    34.98     24.53    28.70     21.34    24.10
+   sarimax_base     22.96    37.81     11.87    27.11      8.19    23.65
+
+
+Table 3: Mean nMBE (%)
+----------------------
+         method L0_Hourly L0_Daily L1_Hourly L1_Daily L2_Hourly L2_Daily
+       ctbu_ets      0.93     0.93      0.84     0.84      0.94     0.94
+      ctbu_lgbm     -5.91    -5.91     -5.77    -5.77     -5.94    -5.94
+        ctbu_rf     -4.55    -4.55     -4.49    -4.49     -4.57    -4.57
+   ctbu_sarimax     -4.81    -4.81     -4.48    -4.48     -4.92    -4.92
+     ctwlsv_ets      0.83     0.83      0.74     0.74      0.85     0.85
+    ctwlsv_lgbm     -5.84    -5.84     -5.68    -5.68     -5.87    -5.87
+      ctwlsv_rf     -4.45    -4.45     -4.37    -4.37     -4.47    -4.47
+ ctwlsv_sarimax     -5.80    -5.80     -5.32    -5.32     -5.96    -5.96
+       ets_base      0.55    -0.96      0.46    -0.96      4.35    -0.94
+      lgbm_base     -2.98    -2.98     -5.42    -5.42     -5.94    -5.94
+           pers     -0.10    -0.10     -0.09    -0.09     -0.10    -0.10
+        rf_base     -2.04    -2.04     -2.90    -2.90     -4.57    -4.57
+   sarimax_base     -1.45    -1.45     -4.22    -4.22     -4.92    -4.92
+
+
+Table 4: Mean SMAPE (%)
+-----------------------
+         method L0_Hourly L0_Daily L1_Hourly L1_Daily L2_Hourly L2_Daily
+       ctbu_ets    111.92    10.10    114.77    13.40    120.78    18.58
+      ctbu_lgbm    111.39    11.56    114.02    15.43    101.47    23.16
+        ctbu_rf    110.28    11.68    113.31    15.11    100.03    20.69
+   ctbu_sarimax    115.80    10.29    117.30    13.90    103.97    21.35
+     ctwlsv_ets    111.16    10.24    113.79    13.55    120.36    18.69
+    ctwlsv_lgbm    111.20    11.51    113.81    15.37    122.65    23.14
+      ctwlsv_rf    110.16    11.63    113.25    15.07    119.91    20.66
+ ctwlsv_sarimax    115.29    11.25    117.19    15.41    123.95    23.06
+       ets_base     83.60    13.21     84.30    16.49     42.84    21.63
+      lgbm_base     85.38    11.12     89.51    16.50    101.47    23.16
+           pers     21.70    15.49     25.89    19.55     40.41    26.11
+        rf_base     85.71    10.44     87.37    14.75    100.46    20.69
+   sarimax_base     91.24    10.00    100.57    15.56    111.32    21.35
+
+
+========================================
+KEY FINDINGS
+========================================
+
+Best performing methods:
+  - L0 Daily: ctbu_sarimax (nRMSE: 11.63%)
+  - L0 Hourly: ctbu_ets (nRMSE: 22.74%)
+  - L1 Daily: ctbu_sarimax (nRMSE: 15.62%)
+  - L1 Hourly: ctbu_ets (nRMSE: 29.43%)
+  - L2 Daily: ctbu_ets (nRMSE: 21.58%)
+  - L2 Hourly: ctwlsv_ets (nRMSE: 43.66%)
