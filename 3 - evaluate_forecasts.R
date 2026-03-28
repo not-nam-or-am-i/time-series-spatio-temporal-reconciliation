@@ -173,6 +173,7 @@ methods <- list(
   list(name = "rf_base", type = "base", dir = dir_rf),
   list(name = "lgbm_base", type = "base", dir = dir_lgbm),
   list(name = "ets_base", type = "base", dir = dir_ets),
+  list(name = "ets_author_base", type = "base", dir = dir_ets_author),
   list(name = "ctwlsv_sarimax", type = "reco", dir = dir_ctwlsv_sarimax),
   list(name = "ctwlsv_rf", type = "reco", dir = dir_ctwlsv_rf),
   list(name = "ctwlsv_lgbm", type = "reco", dir = dir_ctwlsv_lgbm),
@@ -180,7 +181,12 @@ methods <- list(
   list(name = "ctbu_sarimax", type = "reco", dir = dir_ctbu_sarimax),
   list(name = "ctbu_rf", type = "reco", dir = dir_ctbu_rf),
   list(name = "ctbu_lgbm", type = "reco", dir = dir_ctbu_lgbm),
-  list(name = "ctbu_ets", type = "reco", dir = dir_ctbu_ets)
+  list(name = "ctbu_ets", type = "reco", dir = dir_ctbu_ets),
+  list(name = "ctwlsv_ets_author", type = "reco", dir = dir_ctwlsv_ets_author),
+  list(name = "ctbu_ets_author", type = "reco", dir = dir_ctbu_ets_author),
+  list(name = "sarimax_nwp_base", type = "base", dir = dir_sarimax_nwp),
+  list(name = "ctwlsv_sarimax_nwp", type = "reco", dir = dir_ctwlsv_sarimax_nwp),
+  list(name = "ctbu_sarimax_nwp", type = "reco", dir = dir_ctbu_sarimax_nwp)
 )
 
 # ----------------------------------------

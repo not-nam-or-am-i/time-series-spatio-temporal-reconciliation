@@ -27,8 +27,13 @@ load_replication <- function(i = 1, method = "sarimax", bottom_only = FALSE) {
     dir_path <- "./Results_LGBM"
   } else if (method == "ets") {
     dir_path <- "./Results_ETS"
+  } else if (method == "ets_author") {
+    dir_path <- "./Results_ETS_Author"
+  } else if (method == "sarimax_nwp") {
+    dir_path <- "./Results_SARIMAX_NWP"
   } else {
-    stop("Method must be 'sarimax', 'rf', 'lgbm', or 'ets'", call. = FALSE)
+    stop("Method must be 'sarimax', 'rf', 'lgbm', 'ets', 'ets_author', or 'sarimax_nwp'",
+         call. = FALSE)
   }
 
   filesn <- list.files(dir_path, pattern = "\\.RData$", full.names = TRUE)

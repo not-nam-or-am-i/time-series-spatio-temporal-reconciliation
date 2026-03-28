@@ -86,6 +86,10 @@ load_bottom_forecasts <- function(rp, method = "sarimax") {
     dir_path <- dir_lgbm
   } else if (method == "ets") {
     dir_path <- dir_ets
+  } else if (method == "ets_author") {
+    dir_path <- dir_ets_author
+  } else if (method == "sarimax_nwp") {
+    dir_path <- dir_sarimax_nwp
   } else {
     stop(sprintf("Unknown method: %s", method))
   }
@@ -133,7 +137,7 @@ cat(sprintf("Bottom-level series: %d\n", n_bottom))
 # ----------------------------------------
 # Process both SARIMAX and RF
 # ----------------------------------------
-for (method in c("sarimax", "rf", "lgbm", "ets")) {
+for (method in c("sarimax", "rf", "lgbm", "ets", "ets_author", "sarimax_nwp")) {
 
   cat(sprintf("\n========================================\n"))
   cat(sprintf("Processing CTBU T-WLSV for %s\n", toupper(method)))
@@ -147,6 +151,10 @@ for (method in c("sarimax", "rf", "lgbm", "ets")) {
     output_dir <- dir_ctbu_lgbm
   } else if (method == "ets") {
     output_dir <- dir_ctbu_ets
+  } else if (method == "ets_author") {
+    output_dir <- dir_ctbu_ets_author
+  } else if (method == "sarimax_nwp") {
+    output_dir <- dir_ctbu_sarimax_nwp
   }
 
   # Setup parallel processing
@@ -161,6 +169,7 @@ for (method in c("sarimax", "rf", "lgbm", "ets")) {
   clusterExport(cl, c("hts_info", "thf_info", "m", "h", "k.v",
                       "drop_zeros",
                       "dir_sarimax", "dir_rf", "dir_lgbm", "dir_ets",
+                      "dir_ets_author", "dir_sarimax_nwp",
                       "load_bottom_forecasts",
                       "method", "S", "n_upper", "n_bottom",
                       "idx_forecast", "idx_residuals"))

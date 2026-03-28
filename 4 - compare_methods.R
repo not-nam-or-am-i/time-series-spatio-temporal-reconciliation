@@ -110,14 +110,20 @@ cat("  - SARIMAX_BASE: SARIMAX with NWP as exogenous variable\n")
 cat("  - RF_BASE: Random Forest (NWP + lag + calendar features)\n")
 cat("  - LGBM_BASE: LightGBM (NWP + lag + calendar features)\n")
 cat("  - ETS_BASE: ETS (per-level via thief, NWP hybrid at L2)\n")
+cat("  - ETS_AUTHOR_BASE: ETS (original author code, no clipping)\n")
+cat("  - SARIMAX_NWP_BASE: SARIMAX with NWP hourly replacement at L2 + SNTZ\n")
 cat("  - CTWLSV_SARIMAX: Cross-temporal WLSV reconciled SARIMAX\n")
 cat("  - CTWLSV_RF: Cross-temporal WLSV reconciled RF\n")
 cat("  - CTWLSV_LGBM: Cross-temporal WLSV reconciled LightGBM\n")
 cat("  - CTWLSV_ETS: Cross-temporal WLSV reconciled ETS\n")
+cat("  - CTWLSV_ETS_AUTHOR: Cross-temporal WLSV reconciled ETS (author)\n")
+cat("  - CTWLSV_SARIMAX_NWP: Cross-temporal WLSV reconciled SARIMAX+NWP\n")
 cat("  - CTBU_SARIMAX: Bottom-up temporal reconciled SARIMAX\n")
 cat("  - CTBU_RF: Bottom-up temporal reconciled RF\n")
 cat("  - CTBU_LGBM: Bottom-up temporal reconciled LightGBM\n")
-cat("  - CTBU_ETS: Bottom-up temporal reconciled ETS\n\n")
+cat("  - CTBU_ETS: Bottom-up temporal reconciled ETS\n")
+cat("  - CTBU_ETS_AUTHOR: Bottom-up temporal reconciled ETS (author)\n")
+cat("  - CTBU_SARIMAX_NWP: Bottom-up temporal reconciled SARIMAX+NWP\n\n")
 
 # ----------------------------------------
 # Print nRMSE Table
@@ -245,6 +251,44 @@ ets_comparison <- summary_stats %>%
 cat("\nETS: Base vs Reconciled nRMSE:\n")
 print(as.data.frame(ets_comparison), row.names = FALSE)
 
+# Compare base vs reconciled for ETS Author
+ets_author_comparison <- summary_stats %>%
+  filter(method %in% c("ets_author_base", "ctwlsv_ets_author",
+                        "ctbu_ets_author")) %>%
+  select(method, level, freq, mean_nRMSE) %>%
+  pivot_wider(names_from = method, values_from = mean_nRMSE)
+
+cat("\nETS (Author): Base vs Reconciled nRMSE:\n")
+print(as.data.frame(ets_author_comparison), row.names = FALSE)
+
+# Compare our ETS vs author ETS
+ets_vs_author <- summary_stats %>%
+  filter(method %in% c("ets_base", "ets_author_base")) %>%
+  select(method, level, freq, mean_nRMSE) %>%
+  pivot_wider(names_from = method, values_from = mean_nRMSE)
+
+cat("\nETS Ours vs Author (base nRMSE):\n")
+print(as.data.frame(ets_vs_author), row.names = FALSE)
+
+# Compare base vs reconciled for SARIMAX+NWP
+sarimax_nwp_comparison <- summary_stats %>%
+  filter(method %in% c("sarimax_nwp_base", "ctwlsv_sarimax_nwp",
+                        "ctbu_sarimax_nwp")) %>%
+  select(method, level, freq, mean_nRMSE) %>%
+  pivot_wider(names_from = method, values_from = mean_nRMSE)
+
+cat("\nSARIMAX+NWP: Base vs Reconciled nRMSE:\n")
+print(as.data.frame(sarimax_nwp_comparison), row.names = FALSE)
+
+# Compare SARIMAX vs SARIMAX+NWP
+sarimax_vs_nwp <- summary_stats %>%
+  filter(method %in% c("sarimax_base", "sarimax_nwp_base")) %>%
+  select(method, level, freq, mean_nRMSE) %>%
+  pivot_wider(names_from = method, values_from = mean_nRMSE)
+
+cat("\nSARIMAX vs SARIMAX+NWP (base nRMSE):\n")
+print(as.data.frame(sarimax_vs_nwp), row.names = FALSE)
+
 # ----------------------------------------
 # Save Summary Report as Text
 # ----------------------------------------
@@ -265,14 +309,20 @@ cat("2. SARIMAX_BASE - SARIMAX with NWP exogenous variable\n")
 cat("3. RF_BASE - Random Forest (NWP + lag + calendar features)\n")
 cat("4. LGBM_BASE - LightGBM (NWP + lag + calendar features)\n")
 cat("5. ETS_BASE - ETS (per-level via thief, NWP hybrid at L2)\n")
-cat("6. CTWLSV_SARIMAX - Cross-temporal WLSV reconciled SARIMAX\n")
-cat("7. CTWLSV_RF - Cross-temporal WLSV reconciled RF\n")
-cat("8. CTWLSV_LGBM - Cross-temporal WLSV reconciled LightGBM\n")
-cat("9. CTWLSV_ETS - Cross-temporal WLSV reconciled ETS\n")
-cat("10. CTBU_SARIMAX - Bottom-up temporal reconciled SARIMAX\n")
-cat("11. CTBU_RF - Bottom-up temporal reconciled RF\n")
-cat("12. CTBU_LGBM - Bottom-up temporal reconciled LightGBM\n")
-cat("13. CTBU_ETS - Bottom-up temporal reconciled ETS\n\n")
+cat("6. ETS_AUTHOR_BASE - ETS (original author code, no clipping)\n")
+cat("7. SARIMAX_NWP_BASE - SARIMAX with NWP hourly replacement at L2 + SNTZ\n")
+cat("8. CTWLSV_SARIMAX - Cross-temporal WLSV reconciled SARIMAX\n")
+cat("9. CTWLSV_RF - Cross-temporal WLSV reconciled RF\n")
+cat("10. CTWLSV_LGBM - Cross-temporal WLSV reconciled LightGBM\n")
+cat("11. CTWLSV_ETS - Cross-temporal WLSV reconciled ETS\n")
+cat("12. CTWLSV_ETS_AUTHOR - Cross-temporal WLSV reconciled ETS (author)\n")
+cat("13. CTWLSV_SARIMAX_NWP - Cross-temporal WLSV reconciled SARIMAX+NWP\n")
+cat("14. CTBU_SARIMAX - Bottom-up temporal reconciled SARIMAX\n")
+cat("15. CTBU_RF - Bottom-up temporal reconciled RF\n")
+cat("16. CTBU_LGBM - Bottom-up temporal reconciled LightGBM\n")
+cat("17. CTBU_ETS - Bottom-up temporal reconciled ETS\n")
+cat("18. CTBU_ETS_AUTHOR - Bottom-up temporal reconciled ETS (author)\n")
+cat("19. CTBU_SARIMAX_NWP - Bottom-up temporal reconciled SARIMAX+NWP\n\n")
 
 cat("METRICS:\n")
 cat("--------\n")
