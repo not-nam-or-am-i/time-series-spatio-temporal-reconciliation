@@ -17,7 +17,7 @@ All models share the following configuration (defined in `config.R`):
 
 ## 1. SARIMAX
 
-**Script:** `0 - base_forecasts_sarimax.R`
+**Script:** `0-base_forecasts_sarimax.R`
 **Package:** `forecast::auto.arima()`
 
 ### Model Selection
@@ -71,7 +71,7 @@ Hourly forecasts are aggregated to all 8 temporal levels using `create_temporal_
 
 ## 2. Random Forest
 
-**Script:** `0 - base_forecasts_rf.R`
+**Script:** `0-base_forecasts_rf.R`
 **Package:** `ranger`
 
 ### Model Parameters
@@ -121,7 +121,7 @@ Same as SARIMAX: hourly forecasts aggregated to all 8 temporal levels.
 
 ## 3. LightGBM
 
-**Script:** `0 - base_forecasts_lgbm.R`
+**Script:** `0-base_forecasts_lgbm.R`
 **Package:** `lightgbm`
 
 ### Model Parameters
@@ -158,7 +158,7 @@ Same as RF and SARIMAX.
 
 ## 4. Exponential Smoothing (ETS)
 
-**Script:** `0 - base_forecasts_ets.R`
+**Script:** `0-base_forecasts_ets.R`
 **Packages:** `thief`, `forecast`
 
 ### Approach

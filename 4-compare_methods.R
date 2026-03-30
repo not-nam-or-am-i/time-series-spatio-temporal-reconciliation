@@ -1,4 +1,4 @@
-# 4 - compare_methods.R
+# 4-compare_methods.R
 # ========================================
 # Method Comparison and Visualization
 # Generates comparison tables and summary reports
@@ -30,7 +30,7 @@ cat("========================================\n\n")
 # Load evaluation results
 # ----------------------------------------
 if (!file.exists("output/evaluation_results.RData")) {
-  stop("Evaluation results not found. Run '3 - evaluate_forecasts.R' first.")
+  stop("Evaluation results not found. Run '3-evaluate_forecasts.R' first.")
 }
 
 load("output/evaluation_results.RData")

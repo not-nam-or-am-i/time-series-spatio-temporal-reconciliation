@@ -63,8 +63,8 @@ agg_files_ordered <- agg_files_ordered[agg_files_ordered != ""]
 
 ### Files Modified
 
-- `3 - evaluate_forecasts.R` (lines 231-245)
-- `1 - reco_ctwlsv.R` (lines 55-66)
+- `3-evaluate_forecasts.R` (lines 231-245)
+- `1-reco_ctwlsv.R` (lines 55-66)
 
 ---
 
@@ -160,8 +160,8 @@ reco_our <- reco_foreco[idx_forecast$from_foreco, ]
 
 ### Files Modified
 
-- `1 - reco_ctwlsv.R` (lines 33-71, 135-162, 169-196)
-- `1 - reco_ctbu_twlsv.R` (lines 36-74, 140-160)
+- `1-reco_ctwlsv.R` (lines 33-71, 135-162, 169-196)
+- `1-reco_ctbu_twlsv.R` (lines 36-74, 140-160)
 
 ---
 
@@ -188,16 +188,16 @@ After the fixes, re-run scripts in this order:
 
 ```bash
 # 1. Re-run CTWLSV reconciliation
-Rscript "1 - reco_ctwlsv.R"
+Rscript "1-reco_ctwlsv.R"
 
 # 2. Re-run CTBU reconciliation
-Rscript "1 - reco_ctbu_twlsv.R"
+Rscript "1-reco_ctbu_twlsv.R"
 
 # 3. Re-run evaluation
-Rscript "3 - evaluate_forecasts.R"
+Rscript "3-evaluate_forecasts.R"
 
 # 4. Generate comparison
-Rscript "4 - compare_methods.R"
+Rscript "4-compare_methods.R"
 ```
 
 **Note:** Base forecasts do NOT need to be re-run. The forecasts were saved correctly; only the loading/processing had bugs.

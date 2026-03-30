@@ -1,7 +1,7 @@
-# 0 - base_forecasts_ets_author.R
+# 0-base_forecasts_ets_author.R
 # ========================================
 # ETS Base Forecasts — Faithful to Original Author Code
-# Matches the logic in 0 - base_forecasts_ets_author_code.R exactly:
+# Matches the logic in 0-base_forecasts_ets_author_code.R exactly:
 #   - L0+L1: Pure ETS via thief:::th.forecast(), no clipping
 #   - L2: Hybrid ETS+NWP (NWP replaces hourly), no clipping
 #   - Residuals stored as list per replication (author format)
@@ -79,7 +79,10 @@ for (st in 1:ncol(L01)) {
   Y <- ts(L01[, st], freq = m)
 
   # Setup parallel
+  # for local machine
   cl <- makeCluster(ncores)
+  # for SLURM cluster
+  # cl <- parallel::makeCluster(ncores, type = "PSOCK")
   registerDoSNOW(cl)
   clusterEvalQ(cl, { library(thief) })
   clusterExport(cl, c("Y", "m", "k.v", "k.s", "Mk.v",

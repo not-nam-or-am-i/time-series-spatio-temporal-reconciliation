@@ -1,4 +1,4 @@
-# 1 - reco_ctbu_twlsv.R
+# 1-reco_ctbu_twlsv.R
 # ========================================
 # Cross-Temporal Bottom-Up T-WLSV Reconciliation
 # Two-step approach:

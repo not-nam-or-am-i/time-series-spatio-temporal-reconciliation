@@ -1,9 +1,7 @@
-# 0 - base_forecasts_sarimax_nwp.R
+# 0-base_forecasts_sarimax.R
 # ========================================
-# SARIMAX Base Forecasts with NWP Replacement at L2
-# L0+L1: SARIMAX with NWP as exogenous variable (same as regular SARIMAX)
-# L2: SARIMAX at higher temporal levels, hourly (k=1) replaced by NWP
-# Non-negativity handled to before reconciliation
+# SARIMAX Base Forecasts with NWP Exogenous Variable
+# Following PLAN.md: Use NWP predictions as xreg
 # ========================================
 
 rm(list = ls())
@@ -29,9 +27,8 @@ source("fun.R")
 load("info_reco.RData")
 
 cat("\n========================================\n")
-cat("SARIMAX+NWP Base Forecast Generation\n")
-cat("L0+L1: SARIMAX with NWP xreg\n")
-cat("L2: SARIMAX + NWP hourly replacement\n")
+cat("SARIMAX Base Forecast Generation\n")
+cat("With NWP as Exogenous Variable\n")
 cat("========================================\n\n")
 
 # ----------------------------------------
@@ -60,7 +57,7 @@ if (is.character(pred_raw[[1]]) || inherits(pred_raw[[1]], "POSIXct")) {
 
 cat(sprintf("NWP predictions loaded: %d observations x %d stations\n", nrow(pred), ncol(pred)))
 
-# Verify alignment
+# Verify alignment between meas and pred
 if (nrow(meas) != nrow(pred)) {
   stop("Measurement and prediction data have different number of rows!")
 }
@@ -90,7 +87,10 @@ cat(sprintf("  Res.insamp rows: %d (residuals, %d training days)\n", n_res_rows,
 # ----------------------------------------
 cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
 
+# for local machine
 cl <- makeCluster(ncores)
+# for SLURM cluster
+# cl <- parallel::makeCluster(ncores, type = "PSOCK")
 registerDoSNOW(cl)
 
 clusterExport(cl, c("m", "h", "k.v", "train.days", "obs_per_day",
@@ -102,24 +102,24 @@ clusterEvalQ(cl, {
 })
 
 # ----------------------------------------
-# Process each station (bottom-level, L2)
-# SARIMAX at all levels, then replace hourly with NWP
+# Process each station (bottom-level)
 # ----------------------------------------
-cat(sprintf("\nProcessing %d bottom-level stations (SARIMAX + NWP replacement)...\n",
-            n_stations))
+cat(sprintf("\nProcessing %d bottom-level stations...\n", n_stations))
 
 for (station_idx in 1:n_stations) {
 
   station_name <- colnames(meas)[station_idx]
   station_meas <- meas[, station_idx]
-  station_pred <- pred[, station_idx]
+  station_pred <- pred[, station_idx]  # NWP for this station
 
   cat(sprintf("\n[Station %d/%d] %s\n", station_idx, n_stations, station_name))
 
+  # Progress bar
   pb <- txtProgressBar(max = n_rep, style = 3)
   progress <- function(n) setTxtProgressBar(pb, n)
   opts <- list(progress = progress)
 
+  # Export station-specific NWP to workers
   clusterExport(cl, c("station_meas", "station_pred"), envir = environment())
 
   results <- foreach(rp = rep_range, .options.snow = opts,
@@ -140,8 +140,8 @@ for (station_idx in 1:n_stations) {
 
       # Extract training and forecast period data
       train_y <- station_meas[start_idx:end_train]
-      train_x <- station_pred[start_idx:end_train]
-      test_x <- station_pred[(end_train + 1):end_test]
+      train_x <- station_pred[start_idx:end_train]  # NWP for training
+      test_x <- station_pred[(end_train + 1):end_test]  # NWP for forecast period
 
       # Create time series
       train_ts <- ts(train_y, frequency = m)
@@ -149,7 +149,7 @@ for (station_idx in 1:n_stations) {
       # Fit SARIMAX with NWP as exogenous variable
       fit <- tryCatch({
         auto.arima(train_ts,
-                   xreg = train_x,
+                   xreg = train_x,  # NWP as exogenous regressor
                    seasonal = TRUE,
                    stepwise = TRUE,
                    approximation = TRUE,
@@ -158,43 +158,49 @@ for (station_idx in 1:n_stations) {
                    max.d = 1, max.D = 1,
                    allowdrift = FALSE)
       }, error = function(e) {
+        # Fallback: try without xreg
         tryCatch({
-          auto.arima(train_ts, seasonal = TRUE, stepwise = TRUE,
-                     approximation = TRUE, allowdrift = FALSE)
+          auto.arima(train_ts,
+                     seasonal = TRUE,
+                     stepwise = TRUE,
+                     approximation = TRUE,
+                     allowdrift = FALSE)
         }, error = function(e2) {
+          # Ultimate fallback
           Arima(train_ts, order = c(1, 0, 1),
                 seasonal = list(order = c(1, 0, 1), period = m))
         })
       })
 
-      # Generate SARIMAX forecasts (48 hourly values)
+      # Generate forecasts
       fc <- tryCatch({
+        # If model has xreg, use newxreg for forecast
         if (!is.null(fit$xreg)) {
           forecast(fit, h = h * m, xreg = test_x)
         } else {
           forecast(fit, h = h * m)
         }
       }, error = function(e) {
+        # Fallback to simple forecast
         forecast(fit, h = h * m)
       })
 
-      fc_hourly_sarimax <- as.numeric(fc$mean)
+      fc_hourly <- as.numeric(fc$mean)
+      fc_hourly <- pmax(fc_hourly, 0)  # Non-negative
 
-      # Replace hourly forecasts with NWP
-      fc_hourly <- test_x
+      # Get in-sample residuals
+      residuals_hourly <- as.numeric(residuals(fit))
+      if (length(residuals_hourly) < train.days * m) {
+        residuals_hourly <- c(
+          rep(0, train.days * m - length(residuals_hourly)),
+          residuals_hourly
+        )
+      }
 
-      # Build temporal hierarchy from hourly forecast
+      # Create temporal hierarchies
       Y.hat <- create_temporal_hierarchy(fc_hourly, k.v, m, h)
-
-      # Non-negative constraint (ETS-style: clip after hierarchy extraction)
-      Y.hat <- pmax(Y.hat, 0)
-
-      # Observed values
       Y.obs <- station_meas[(end_train + 1):end_test]
-
-      # Residuals: use NWP residuals at hourly level (matching ETS hybrid approach)
-      nwp_residuals <- train_x - train_y
-      Res.insamp <- create_residual_hierarchy(nwp_residuals, k.v, m, train.days)
+      Res.insamp <- create_residual_hierarchy(residuals_hourly, k.v, m, train.days)
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
 
@@ -213,22 +219,23 @@ for (station_idx in 1:n_stations) {
     cat(sprintf("  Warning: %d replications had errors\n", sum(errors)))
   }
 
-  filename <- sprintf("%s/%s--sarimax_nwp.RData", dir_sarimax_nwp, station_name)
+  filename <- sprintf("%s/%s--sarimax.RData", dir_sarimax, station_name)
   save(results, file = filename)
   cat(sprintf("  Saved to: %s\n", filename))
 }
 
 # ----------------------------------------
 # Process aggregated series (Total + 5 Regions)
-# Same as regular SARIMAX (no NWP replacement at L0+L1)
 # ----------------------------------------
 cat("\n========================================\n")
-cat("Processing Aggregated Series (L0 + L1) — SARIMAX with NWP xreg\n")
+cat("Processing Aggregated Series (L0 + L1)\n")
 cat("========================================\n")
 
+# Create aggregated data using S matrix
 S <- as.matrix(hts_info$S)
-n_upper <- nrow(S) - ncol(S)
+n_upper <- nrow(S) - ncol(S)  # 6
 
+# Aggregate measurement and prediction data
 meas_agg <- t(S[1:n_upper, , drop = FALSE] %*% t(meas))
 pred_agg <- t(S[1:n_upper, , drop = FALSE] %*% t(pred))
 
@@ -238,7 +245,7 @@ for (agg_idx in 1:n_upper) {
 
   agg_name <- agg_names[agg_idx]
   agg_meas <- meas_agg[, agg_idx]
-  agg_pred <- pred_agg[, agg_idx]
+  agg_pred <- pred_agg[, agg_idx]  # Aggregated NWP
 
   cat(sprintf("\n[Aggregate %d/%d] %s\n", agg_idx, n_upper, agg_name))
 
@@ -299,11 +306,7 @@ for (agg_idx in 1:n_upper) {
         forecast(fit, h = h * m)
       })
 
-      fc_hourly <- as.numeric(fc$mean)
-
-      # Build hierarchy first, then apply ETS-style non-negativity
-      Y.hat <- create_temporal_hierarchy(fc_hourly, k.v, m, h)
-      Y.hat <- pmax(Y.hat, 0)
+      fc_hourly <- pmax(as.numeric(fc$mean), 0)
 
       residuals_hourly <- as.numeric(residuals(fit))
       if (length(residuals_hourly) < train.days * m) {
@@ -313,6 +316,7 @@ for (agg_idx in 1:n_upper) {
         )
       }
 
+      Y.hat <- create_temporal_hierarchy(fc_hourly, k.v, m, h)
       Y.obs <- agg_meas[(end_train + 1):end_test]
       Res.insamp <- create_residual_hierarchy(residuals_hourly, k.v, m, train.days)
 
@@ -333,7 +337,7 @@ for (agg_idx in 1:n_upper) {
     cat(sprintf("  Warning: %d replications had errors\n", sum(errors)))
   }
 
-  filename <- sprintf("%s/%s--0--sarimax_nwp.RData", dir_sarimax_nwp, agg_name)
+  filename <- sprintf("%s/%s--0--sarimax.RData", dir_sarimax, agg_name)
   save(results, file = filename)
   cat(sprintf("  Saved to: %s\n", filename))
 }
@@ -344,13 +348,10 @@ for (agg_idx in 1:n_upper) {
 stopCluster(cl)
 
 cat("\n========================================\n")
-cat("SARIMAX+NWP Base Forecasts Complete\n")
+cat("SARIMAX Base Forecasts Complete\n")
 cat("========================================\n")
 cat(sprintf("Total stations processed: %d\n", n_stations))
 cat(sprintf("Aggregated series processed: %d\n", n_upper))
 cat(sprintf("Replications per series: %d\n", n_rep))
-cat(sprintf("Results saved to: %s\n", dir_sarimax_nwp))
-cat("\nApproach:\n")
-cat("  - L0+L1: SARIMAX with NWP as xreg (same as regular SARIMAX)\n")
-cat("  - Non-negativity: ETS-style clipping applied directly to Y.hat\n")
-cat("  - L2 residuals: NWP residuals (NWP - actual)\n")
+cat(sprintf("Results saved to: %s\n", dir_sarimax))
+cat("NWP used as exogenous variable: YES\n")

@@ -62,7 +62,7 @@ S = [ C ]    where C (6 x 318) is the upper-level aggregation matrix
 - **Row 1 of C** (Total): all ones — sums all 318 stations
 - **Rows 2-6 of C** (Regions): block-diagonal — each region sums its member stations
 
-The S matrix and related hierarchy tools are created by `0 - info_reco.R` and stored in `info_reco.RData`.
+The S matrix and related hierarchy tools are created by `0-info_reco.R` and stored in `info_reco.RData`.
 
 ## Temporal Hierarchy
 

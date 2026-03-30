@@ -19,7 +19,7 @@ Both models share the following parameters (defined in `config.R`):
 
 ## SARIMAX Model
 
-**Implementation File:** `0 - base_forecasts_sarimax.R`
+**Implementation File:** `0-base_forecasts_sarimax.R`
 
 ### Model Type
 
@@ -91,7 +91,7 @@ For each replication and series:
 
 ## Random Forest Model
 
-**Implementation File:** `0 - base_forecasts_rf.R`
+**Implementation File:** `0-base_forecasts_rf.R`
 
 ### Model Type
 

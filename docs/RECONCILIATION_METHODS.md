@@ -8,7 +8,7 @@ Base forecasts are generated independently — each station and temporal level i
 
 ## Method 1: CTWLSV — Cross-Temporal WLSV Reconciliation
 
-**Script:** `1 - reco_ctwlsv.R`
+**Script:** `1-reco_ctwlsv.R`
 **Package:** `FoReco::octrec()`
 
 ### Overview
@@ -88,7 +88,7 @@ Pre-computed index mappings (`idx_forecast$to_foreco` and `idx_forecast$from_for
 
 ## Method 2: CTBU — Cross-Temporal Bottom-Up with T-WLSV
 
-**Script:** `1 - reco_ctbu_twlsv.R`
+**Script:** `1-reco_ctbu_twlsv.R`
 **Package:** `FoReco::thfrec()` + manual spatial aggregation
 
 ### Overview

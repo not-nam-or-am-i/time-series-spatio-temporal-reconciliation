@@ -34,15 +34,15 @@ RF_SARIMAX/
 │   └── TEMPORAL_HIERARCHY_FORMAT.md  # Data format reference
 ├── config.R                  # Shared configuration parameters
 ├── fun.R                     # Helper functions
-├── 0 - info_reco.R           # Create hierarchy information
-├── 0 - base_forecasts_sarimax.R   # SARIMAX forecast generation
-├── 0 - base_forecasts_rf.R        # Random Forest forecast generation
-├── 0 - base_forecasts_lgbm.R      # LightGBM forecast generation
-├── 0 - base_forecasts_ets.R       # ETS forecast generation
-├── 1 - reco_ctwlsv.R         # Cross-temporal WLSV reconciliation
-├── 1 - reco_ctbu_twlsv.R     # Bottom-up temporal reconciliation
-├── 3 - evaluate_forecasts.R  # Calculate evaluation metrics
-├── 4 - compare_methods.R     # Generate comparison tables
+├── 0-info_reco.R           # Create hierarchy information
+├── 0-base_forecasts_sarimax.R   # SARIMAX forecast generation
+├── 0-base_forecasts_rf.R        # Random Forest forecast generation
+├── 0-base_forecasts_lgbm.R      # LightGBM forecast generation
+├── 0-base_forecasts_ets.R       # ETS forecast generation
+├── 1-reco_ctwlsv.R         # Cross-temporal WLSV reconciliation
+├── 1-reco_ctbu_twlsv.R     # Bottom-up temporal reconciliation
+├── 3-evaluate_forecasts.R  # Calculate evaluation metrics
+├── 4-compare_methods.R     # Generate comparison tables
 ├── Results_SARIMAX/          # SARIMAX forecast outputs
 ├── Results_RF/               # Random Forest forecast outputs
 ├── Results_LGBM/             # LightGBM forecast outputs
@@ -64,21 +64,21 @@ Run scripts in this order:
 
 ```bash
 # 1. Setup hierarchy information (run once)
-Rscript "0 - info_reco.R"
+Rscript "0-info_reco.R"
 
 # 2. Generate base forecasts (can run in parallel on different machines)
-Rscript "0 - base_forecasts_sarimax.R"   # ~2-4 hours
-Rscript "0 - base_forecasts_rf.R"        # ~1-2 hours
-Rscript "0 - base_forecasts_lgbm.R"      # ~1-2 hours
-Rscript "0 - base_forecasts_ets.R"       # ~2-5 hours
+Rscript "0-base_forecasts_sarimax.R"   # ~2-4 hours
+Rscript "0-base_forecasts_rf.R"        # ~1-2 hours
+Rscript "0-base_forecasts_lgbm.R"      # ~1-2 hours
+Rscript "0-base_forecasts_ets.R"       # ~2-5 hours
 
 # 3. Run reconciliation (after base forecasts complete)
-Rscript "1 - reco_ctwlsv.R"              # ~30-60 min
-Rscript "1 - reco_ctbu_twlsv.R"          # ~15-30 min
+Rscript "1-reco_ctwlsv.R"              # ~30-60 min
+Rscript "1-reco_ctbu_twlsv.R"          # ~15-30 min
 
 # 4. Evaluate and compare
-Rscript "3 - evaluate_forecasts.R"       # ~10 min
-Rscript "4 - compare_methods.R"          # ~1 min
+Rscript "3-evaluate_forecasts.R"       # ~10 min
+Rscript "4-compare_methods.R"          # ~1 min
 ```
 
 ## Quick Test

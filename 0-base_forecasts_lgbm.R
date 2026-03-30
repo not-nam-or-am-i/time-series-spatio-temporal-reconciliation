@@ -1,13 +1,13 @@
-# 0 - base_forecasts_rf.R
+# 0-base_forecasts_lgbm.R
 # ========================================
-# Random Forest Base Forecasts with Full Feature Engineering
-# Following PLAN.md: NWP + Lags + Rolling Stats + Calendar Features
+# LightGBM Base Forecasts with Full Feature Engineering
+# Same features as Random Forest: NWP + Lags + Rolling Stats + Calendar
 # ========================================
 
 rm(list = ls())
 
 # Load required packages
-libs <- c("ranger", "doParallel", "doSNOW", "progress", "data.table", "Matrix")
+libs <- c("lightgbm", "doParallel", "doSNOW", "progress", "data.table", "Matrix")
 invisible(lapply(libs, library, character.only = TRUE))
 
 # Set working directory to RF_SARIMAX
@@ -27,7 +27,7 @@ source("fun.R")
 load("info_reco.RData")
 
 cat("\n========================================\n")
-cat("Random Forest Base Forecast Generation\n")
+cat("LightGBM Base Forecast Generation\n")
 cat("With NWP + Full Feature Engineering\n")
 cat("========================================\n\n")
 
@@ -80,29 +80,17 @@ cat(sprintf("  Y.obs rows: %d\n", n_yobs_rows))
 cat(sprintf("  Res.insamp rows: %d\n", n_res_rows))
 
 # ----------------------------------------
-# Feature creation function (FULL - per PLAN.md)
+# Feature creation function (same as RF)
 # ----------------------------------------
-create_rf_features <- function(data, nwp_data, start_hour = 1) {
-  # Creates features for Random Forest training/prediction
-  #
-  # Features (per PLAN.md):
-  # - Lag features: lag_1h, lag_24h, lag_48h, lag_168h (1 week)
-  # - Rolling statistics: rolling_mean_24h, rolling_sd_24h
-  # - Calendar features: hour_of_day, day_of_week, month
-  # - NWP predictions
-
+create_lgbm_features <- function(data, nwp_data, start_hour = 1) {
   n <- length(data)
 
-  # Initialize feature dataframe
   features <- data.frame(
-    # NWP prediction (key feature)
     nwp = nwp_data,
-
-    # Lag features
     lag_1 = c(NA, data[1:(n - 1)]),
     lag_24 = c(rep(NA, 24), data[1:(n - 24)]),
     lag_48 = c(rep(NA, 48), data[1:(n - 48)]),
-    lag_168 = c(rep(NA, 168), data[1:(n - 168)])  # 1 week lag
+    lag_168 = c(rep(NA, 168), data[1:(n - 168)])
   )
 
   # Rolling statistics (24-hour window)
@@ -116,31 +104,24 @@ create_rf_features <- function(data, nwp_data, start_hour = 1) {
   features$rolling_mean_24 <- rolling_mean
   features$rolling_sd_24 <- rolling_sd
 
-  # Calendar features (assuming hourly data starting from a known point)
-  # Hour of day: cycles 0-23
+  # Calendar features
   hour_of_day <- ((start_hour - 1 + 0:(n - 1)) %% 24)
   features$hour_of_day <- hour_of_day
 
-  # For day_of_week and month, we use cyclic features
-  # Since we don't have actual dates, use proxies based on position
   day_idx <- ((start_hour - 1 + 0:(n - 1)) %/% 24) + 1
-  features$day_of_week <- (day_idx - 1) %% 7  # 0-6
+  features$day_of_week <- (day_idx - 1) %% 7
+  features$month <- ((day_idx - 1) %/% 30) %% 12 + 1
 
-  # Month approximation (assuming 365 days/year, ~30 days/month)
-  features$month <- ((day_idx - 1) %/% 30) %% 12 + 1  # 1-12
-
-  # Sin/cos encoding for cyclic features (better for RF)
   features$hour_sin <- sin(2 * pi * hour_of_day / 24)
   features$hour_cos <- cos(2 * pi * hour_of_day / 24)
 
-  # Target variable
   features$target <- data
 
   return(features)
 }
 
 # Feature creation for prediction (single step)
-create_prediction_features <- function(current_data, nwp_value, current_hour, current_day) {
+create_lgbm_prediction_features <- function(current_data, nwp_value, current_hour, current_day) {
   n <- length(current_data)
 
   features <- data.frame(
@@ -162,20 +143,46 @@ create_prediction_features <- function(current_data, nwp_value, current_hour, cu
 }
 
 # ----------------------------------------
+# LightGBM hyperparameters
+# ----------------------------------------
+lgbm_params <- list(
+  objective = "regression",
+  metric = "rmse",
+  learning_rate = 0.05,
+  num_leaves = 31,
+  min_data_in_leaf = 20,
+  feature_fraction = 0.8,
+  bagging_fraction = 0.8,
+  bagging_freq = 5,
+  verbose = -1
+)
+lgbm_nrounds <- 300
+
+cat(sprintf("\nLightGBM parameters:\n"))
+cat(sprintf("  num_leaves: %d\n", lgbm_params$num_leaves))
+cat(sprintf("  learning_rate: %.2f\n", lgbm_params$learning_rate))
+cat(sprintf("  nrounds: %d\n", lgbm_nrounds))
+cat(sprintf("  min_data_in_leaf: %d\n", lgbm_params$min_data_in_leaf))
+
+# ----------------------------------------
 # Setup parallel processing
 # ----------------------------------------
 cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
 
+# for local machine
 cl <- makeCluster(ncores)
+# for SLURM cluster
+# cl <- parallel::makeCluster(ncores, type = "PSOCK")
 registerDoSNOW(cl)
 
 clusterExport(cl, c("m", "h", "k.v", "train.days", "obs_per_day",
                     "create_temporal_hierarchy", "create_residual_hierarchy",
-                    "create_rf_features", "create_prediction_features",
+                    "create_lgbm_features", "create_lgbm_prediction_features",
+                    "lgbm_params", "lgbm_nrounds",
                     "n_yhat_rows", "n_yobs_rows", "n_res_rows"))
 
 clusterEvalQ(cl, {
-  library(ranger)
+  library(lightgbm)
 })
 
 # ----------------------------------------
@@ -218,9 +225,8 @@ for (station_idx in 1:n_stations) {
       extended_pred <- station_pred[extended_start:end_train]
 
       # Create features with extended data
-      # start_hour for calendar features
       start_hour_offset <- extended_start
-      features <- create_rf_features(extended_meas, extended_pred, start_hour_offset)
+      features <- create_lgbm_features(extended_meas, extended_pred, start_hour_offset)
 
       # Remove rows with NA (due to lags)
       features_clean <- features[complete.cases(features), ]
@@ -232,15 +238,18 @@ for (station_idx in 1:n_stations) {
                     error = "Insufficient training data"))
       }
 
-      # Train Random Forest
-      rf_model <- ranger(
-        target ~ . - target,  # Exclude target from predictors
-        data = features_clean,
-        num.trees = 500,
-        mtry = floor(sqrt(ncol(features_clean) - 1)),
-        min.node.size = 5,
-        importance = "none",  # Skip for speed
-        seed = 42 + rp
+      # Train LightGBM
+      feature_names <- setdiff(names(features_clean), "target")
+      dtrain <- lgb.Dataset(
+        data = as.matrix(features_clean[, feature_names]),
+        label = features_clean$target
+      )
+
+      lgb_model <- lgb.train(
+        params = lgbm_params,
+        data = dtrain,
+        nrounds = lgbm_nrounds,
+        verbose = -1
       )
 
       # Recursive multi-step forecasting with NWP
@@ -250,25 +259,22 @@ for (station_idx in 1:n_stations) {
       forecast_nwp <- station_pred[(end_train + 1):end_test]
 
       # Track hour and day for calendar features
-      current_hour <- end_train + 1  # Hour index
-      current_day <- (end_train %/% 24) + 1  # Day index
+      current_hour <- end_train + 1
+      current_day <- (end_train %/% 24) + 1
 
       for (step in 1:(h * m)) {
-        # Create prediction features
-        new_features <- create_prediction_features(
+        new_features <- create_lgbm_prediction_features(
           current_data,
           forecast_nwp[step],
           current_hour,
           current_day
         )
 
-        # Predict
-        pred_val <- predict(rf_model, new_features)$predictions
+        pred_val <- predict(lgb_model, as.matrix(new_features[, feature_names]))
         pred_val <- max(pred_val, 0)  # Non-negative
 
         fc_hourly[step] <- pred_val
 
-        # Update for next step
         current_data <- c(current_data, pred_val)
         current_hour <- current_hour + 1
         if ((current_hour - 1) %% 24 == 0) {
@@ -277,8 +283,7 @@ for (station_idx in 1:n_stations) {
       }
 
       # In-sample residuals
-      train_features <- features_clean[, names(features_clean) != "target"]
-      train_pred <- predict(rf_model, train_features)$predictions
+      train_pred <- predict(lgb_model, as.matrix(features_clean[, feature_names]))
       residuals_hourly <- features_clean$target - train_pred
 
       # Pad/trim residuals
@@ -311,7 +316,7 @@ for (station_idx in 1:n_stations) {
     cat(sprintf("  Warning: %d replications had errors\n", sum(errors)))
   }
 
-  filename <- sprintf("%s/%s--rf.RData", dir_rf, station_name)
+  filename <- sprintf("%s/%s--lgbm.RData", dir_lgbm, station_name)
   save(results, file = filename)
   cat(sprintf("  Saved to: %s\n", filename))
 }
@@ -365,7 +370,7 @@ for (agg_idx in 1:n_upper) {
       extended_meas <- agg_meas[extended_start:end_train]
       extended_pred <- agg_pred[extended_start:end_train]
 
-      features <- create_rf_features(extended_meas, extended_pred, extended_start)
+      features <- create_lgbm_features(extended_meas, extended_pred, extended_start)
       features_clean <- features[complete.cases(features), ]
 
       if (nrow(features_clean) < 100) {
@@ -375,14 +380,17 @@ for (agg_idx in 1:n_upper) {
                     error = "Insufficient training data"))
       }
 
-      rf_model <- ranger(
-        target ~ . - target,
-        data = features_clean,
-        num.trees = 500,
-        mtry = floor(sqrt(ncol(features_clean) - 1)),
-        min.node.size = 5,
-        importance = "none",
-        seed = 42 + rp
+      feature_names <- setdiff(names(features_clean), "target")
+      dtrain <- lgb.Dataset(
+        data = as.matrix(features_clean[, feature_names]),
+        label = features_clean$target
+      )
+
+      lgb_model <- lgb.train(
+        params = lgbm_params,
+        data = dtrain,
+        nrounds = lgbm_nrounds,
+        verbose = -1
       )
 
       fc_hourly <- numeric(h * m)
@@ -394,22 +402,21 @@ for (agg_idx in 1:n_upper) {
       current_day <- (end_train %/% 24) + 1
 
       for (step in 1:(h * m)) {
-        new_features <- create_prediction_features(
+        new_features <- create_lgbm_prediction_features(
           current_data,
           forecast_nwp[step],
           current_hour,
           current_day
         )
 
-        pred_val <- max(predict(rf_model, new_features)$predictions, 0)
+        pred_val <- max(predict(lgb_model, as.matrix(new_features[, feature_names])), 0)
         fc_hourly[step] <- pred_val
         current_data <- c(current_data, pred_val)
         current_hour <- current_hour + 1
         if ((current_hour - 1) %% 24 == 0) current_day <- current_day + 1
       }
 
-      train_features <- features_clean[, names(features_clean) != "target"]
-      train_pred <- predict(rf_model, train_features)$predictions
+      train_pred <- predict(lgb_model, as.matrix(features_clean[, feature_names]))
       residuals_hourly <- features_clean$target - train_pred
 
       n_expected_res <- train.days * m
@@ -440,7 +447,7 @@ for (agg_idx in 1:n_upper) {
     cat(sprintf("  Warning: %d replications had errors\n", sum(errors)))
   }
 
-  filename <- sprintf("%s/%s--0--rf.RData", dir_rf, agg_name)
+  filename <- sprintf("%s/%s--0--lgbm.RData", dir_lgbm, agg_name)
   save(results, file = filename)
   cat(sprintf("  Saved to: %s\n", filename))
 }
@@ -451,14 +458,16 @@ for (agg_idx in 1:n_upper) {
 stopCluster(cl)
 
 cat("\n========================================\n")
-cat("Random Forest Base Forecasts Complete\n")
+cat("LightGBM Base Forecasts Complete\n")
 cat("========================================\n")
 cat(sprintf("Total stations processed: %d\n", n_stations))
 cat(sprintf("Aggregated series processed: %d\n", n_upper))
 cat(sprintf("Replications per series: %d\n", n_rep))
-cat(sprintf("Results saved to: %s\n", dir_rf))
+cat(sprintf("Results saved to: %s\n", dir_lgbm))
 cat("\nFeatures used:\n")
 cat("  - NWP predictions: YES\n")
 cat("  - Lag features: lag_1h, lag_24h, lag_48h, lag_168h\n")
 cat("  - Rolling stats: rolling_mean_24h, rolling_sd_24h\n")
 cat("  - Calendar features: hour_of_day, day_of_week, month (+ sin/cos)\n")
+cat(sprintf("\nLightGBM: %d rounds, lr=%.2f, %d leaves\n",
+            lgbm_nrounds, lgbm_params$learning_rate, lgbm_params$num_leaves))
