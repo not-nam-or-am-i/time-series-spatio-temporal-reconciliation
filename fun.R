@@ -23,6 +23,8 @@ load_replication <- function(i = 1, method = "sarimax", bottom_only = FALSE) {
     dir_path <- "./Results_SARIMAX"
   } else if (method == "rf") {
     dir_path <- "./Results_RF"
+  } else if (method == "rf_nwp") {
+    dir_path <- "./Results_RF_NWP"
   } else if (method == "lgbm") {
     dir_path <- "./Results_LGBM"
   } else if (method == "ets") {
@@ -32,7 +34,7 @@ load_replication <- function(i = 1, method = "sarimax", bottom_only = FALSE) {
   } else if (method == "sarimax_nwp") {
     dir_path <- "./Results_SARIMAX_NWP"
   } else {
-    stop("Method must be 'sarimax', 'rf', 'lgbm', 'ets', 'ets_author', or 'sarimax_nwp'",
+    stop("Method must be 'sarimax', 'rf', 'rf_nwp', 'lgbm', 'ets', 'ets_author', or 'sarimax_nwp'",
          call. = FALSE)
   }
 

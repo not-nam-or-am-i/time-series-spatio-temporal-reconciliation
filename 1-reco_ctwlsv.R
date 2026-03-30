@@ -79,6 +79,8 @@ load_all_forecasts <- function(rp, method = "sarimax") {
     dir_path <- dir_sarimax
   } else if (method == "rf") {
     dir_path <- dir_rf
+  } else if (method == "rf_nwp") {
+    dir_path <- dir_rf_nwp
   } else if (method == "lgbm") {
     dir_path <- dir_lgbm
   } else if (method == "ets") {
@@ -150,9 +152,9 @@ load_all_forecasts <- function(rp, method = "sarimax") {
 }
 
 # ----------------------------------------
-# Process both SARIMAX and RF
+# Process all base methods
 # ----------------------------------------
-for (method in c("sarimax", "rf", "lgbm", "ets", "ets_author", "sarimax_nwp")) {
+for (method in c("sarimax", "rf", "rf_nwp", "lgbm", "ets", "ets_author", "sarimax_nwp")) {
 
   cat(sprintf("\n========================================\n"))
   cat(sprintf("Processing CTWLSV for %s\n", toupper(method)))
@@ -162,6 +164,8 @@ for (method in c("sarimax", "rf", "lgbm", "ets", "ets_author", "sarimax_nwp")) {
     output_dir <- dir_ctwlsv_sarimax
   } else if (method == "rf") {
     output_dir <- dir_ctwlsv_rf
+  } else if (method == "rf_nwp") {
+    output_dir <- dir_ctwlsv_rf_nwp
   } else if (method == "lgbm") {
     output_dir <- dir_ctwlsv_lgbm
   } else if (method == "ets") {
@@ -188,7 +192,7 @@ for (method in c("sarimax", "rf", "lgbm", "ets", "ets_author", "sarimax_nwp")) {
 
   clusterExport(cl, c("hts_info", "thf_info", "m", "h", "drop_zeros",
                       "dir_sarimax", "dir_rf", "dir_lgbm", "dir_ets",
-                      "dir_ets_author", "dir_sarimax_nwp",
+                      "dir_rf_nwp", "dir_ets_author", "dir_sarimax_nwp",
                       "load_all_forecasts", "method",
                       "S", "n_upper", "n_bottom", "k.v",
                       "idx_forecast", "idx_residuals"))

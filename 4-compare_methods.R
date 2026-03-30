@@ -108,18 +108,21 @@ cat("Methods compared:\n")
 cat("  - PERS: Persistence baseline (previous day's values)\n")
 cat("  - SARIMAX_BASE: SARIMAX with NWP as exogenous variable\n")
 cat("  - RF_BASE: Random Forest (NWP + lag + calendar features)\n")
+cat("  - RF_NWP_BASE: Random Forest (lag/rolling/calendar only) with L2 hourly replaced by NWP\n")
 cat("  - LGBM_BASE: LightGBM (NWP + lag + calendar features)\n")
 cat("  - ETS_BASE: ETS (per-level via thief, NWP hybrid at L2)\n")
 cat("  - ETS_AUTHOR_BASE: ETS (original author code, no clipping)\n")
 cat("  - SARIMAX_NWP_BASE: SARIMAX with NWP hourly replacement at L2 + SNTZ\n")
 cat("  - CTWLSV_SARIMAX: Cross-temporal WLSV reconciled SARIMAX\n")
 cat("  - CTWLSV_RF: Cross-temporal WLSV reconciled RF\n")
+cat("  - CTWLSV_RF_NWP: Cross-temporal WLSV reconciled RF-NWP\n")
 cat("  - CTWLSV_LGBM: Cross-temporal WLSV reconciled LightGBM\n")
 cat("  - CTWLSV_ETS: Cross-temporal WLSV reconciled ETS\n")
 cat("  - CTWLSV_ETS_AUTHOR: Cross-temporal WLSV reconciled ETS (author)\n")
 cat("  - CTWLSV_SARIMAX_NWP: Cross-temporal WLSV reconciled SARIMAX+NWP\n")
 cat("  - CTBU_SARIMAX: Bottom-up temporal reconciled SARIMAX\n")
 cat("  - CTBU_RF: Bottom-up temporal reconciled RF\n")
+cat("  - CTBU_RF_NWP: Bottom-up temporal reconciled RF-NWP\n")
 cat("  - CTBU_LGBM: Bottom-up temporal reconciled LightGBM\n")
 cat("  - CTBU_ETS: Bottom-up temporal reconciled ETS\n")
 cat("  - CTBU_ETS_AUTHOR: Bottom-up temporal reconciled ETS (author)\n")
@@ -232,6 +235,15 @@ rf_comparison <- summary_stats %>%
 
 cat("\nRandom Forest: Base vs Reconciled nRMSE:\n")
 print(as.data.frame(rf_comparison), row.names = FALSE)
+
+# Compare base vs reconciled for RF-NWP
+rf_nwp_comparison <- summary_stats %>%
+  filter(method %in% c("rf_nwp_base", "ctwlsv_rf_nwp", "ctbu_rf_nwp")) %>%
+  select(method, level, freq, mean_nRMSE) %>%
+  pivot_wider(names_from = method, values_from = mean_nRMSE)
+
+cat("\nRF-NWP: Base vs Reconciled nRMSE:\n")
+print(as.data.frame(rf_nwp_comparison), row.names = FALSE)
 
 # Compare base vs reconciled for LightGBM
 lgbm_comparison <- summary_stats %>%
