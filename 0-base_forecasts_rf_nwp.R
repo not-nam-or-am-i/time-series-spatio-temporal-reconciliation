@@ -169,6 +169,8 @@ create_prediction_features <- function(current_data, current_hour, current_day) 
 cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
 
 cl <- makeCluster(ncores)
+# for SLURM cluster
+# cl <- parallel::makeCluster(ncores, type = "PSOCK")
 registerDoSNOW(cl)
 
 clusterExport(
