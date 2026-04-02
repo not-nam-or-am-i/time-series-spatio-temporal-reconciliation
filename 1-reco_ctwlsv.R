@@ -215,7 +215,8 @@ for (method in c("sarimax", "rf", "rf_nwp", "lgbm", "ets", "ets_author", "sarima
 
       # Check for NA values
       if (any(is.na(all_data$Yhat)) || any(is.na(all_data$E))) {
-        return(list(free = NULL, nn = NULL, time = NA,
+        return(list(free = NULL, nn = NULL,
+                    time_free = NA_real_, time_nn = NA_real_,
                     error = "NA values in input data"))
       }
 
@@ -341,13 +342,23 @@ for (method in c("sarimax", "rf", "rf_nwp", "lgbm", "ets", "ets_author", "sarima
   save(results, file = filename)
   cat(sprintf("\nResults saved to: %s\n", filename))
 
-  # Summary statistics
-  times_free <- sapply(results, function(x) x$time_free)
-  times_free <- times_free[!is.na(times_free)]
+  # Summary statistics (coerce to numeric; failed reps may omit time_free in older runs)
+  times_free <- unlist(
+    lapply(results, function(x) {
+      tf <- x$time_free
+      if (is.null(tf)) NA_real_ else as.numeric(tf)
+    }),
+    use.names = FALSE
+  )
+  times_free <- times_free[is.finite(times_free)]
 
   cat(sprintf("\nTiming summary (free solution):\n"))
-  cat(sprintf("  Mean: %.2f seconds\n", mean(times_free)))
-  cat(sprintf("  Total: %.2f minutes\n", sum(times_free) / 60))
+  if (length(times_free) == 0) {
+    cat("  No successful replications with timing data.\n")
+  } else {
+    cat(sprintf("  Mean: %.2f seconds\n", mean(times_free)))
+    cat(sprintf("  Total: %.2f minutes\n", sum(times_free) / 60))
+  }
 
   n_nn <- sum(sapply(results, function(x) !is.null(x$nn)))
   cat(sprintf("\nReplications requiring non-negativity: %d / %d\n",

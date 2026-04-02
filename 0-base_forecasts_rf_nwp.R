@@ -168,6 +168,7 @@ create_prediction_features <- function(current_data, current_hour, current_day) 
 # ----------------------------------------
 cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
 
+# for local machine
 cl <- makeCluster(ncores)
 # for SLURM cluster
 # cl <- parallel::makeCluster(ncores, type = "PSOCK")
@@ -310,7 +311,8 @@ for (station_idx in 1:n_stations) {
         y_day_offset <- (day - 1) * k_star
         row_start <- y_day_offset + hourly_offset + 1
         row_end <- y_day_offset + k_star
-        Y.hat[row_start:row_end] <- nwp_hourly[(day - 1) * m + 1:day * m]
+        # Note: use explicit ((day-1)*m+1):(day*m); (day-1)*m + 1:day*m parses as (day-1)*m + (1:day)*m
+        Y.hat[row_start:row_end] <- nwp_hourly[((day - 1) * m + 1):(day * m)]
       }
       Y.hat <- pmax(Y.hat, 0)
 
@@ -324,7 +326,8 @@ for (station_idx in 1:n_stations) {
         r_day_offset <- (day - 1) * k_star
         r_row_start <- r_day_offset + hourly_offset + 1
         r_row_end <- r_day_offset + k_star
-        Res.insamp[r_row_start:r_row_end] <- nwp_residuals_hourly[(day - 1) * m + 1:day * m]
+        Res.insamp[r_row_start:r_row_end] <-
+          nwp_residuals_hourly[((day - 1) * m + 1):(day * m)]
       }
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
