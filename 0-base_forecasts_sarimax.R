@@ -94,7 +94,8 @@ cl <- makeCluster(ncores)
 registerDoSNOW(cl)
 
 clusterExport(cl, c("m", "h", "k.v", "train.days", "obs_per_day",
-                    "create_temporal_hierarchy", "create_residual_hierarchy",
+                    "aggregate_hourly_to_k",
+                    "assemble_yhat_from_levels", "assemble_residuals_from_levels",
                     "n_yhat_rows", "n_yobs_rows", "n_res_rows"))
 
 clusterEvalQ(cl, {
@@ -126,7 +127,6 @@ for (station_idx in 1:n_stations) {
                      .errorhandling = "pass") %dopar% {
 
     tryCatch({
-      # Calculate indices
       start_idx <- (rp - 1) * obs_per_day + 1
       end_train <- start_idx + train.days * obs_per_day - 1
       end_test <- end_train + h * obs_per_day
@@ -138,69 +138,75 @@ for (station_idx in 1:n_stations) {
                     error = "Index out of bounds"))
       }
 
-      # Extract training and forecast period data
-      train_y <- station_meas[start_idx:end_train]
-      train_x <- station_pred[start_idx:end_train]  # NWP for training
-      test_x <- station_pred[(end_train + 1):end_test]  # NWP for forecast period
+      train_y_hourly <- station_meas[start_idx:end_train]
+      train_x_hourly <- station_pred[start_idx:end_train]
+      test_x_hourly <- station_pred[(end_train + 1):end_test]
 
-      # Create time series
-      train_ts <- ts(train_y, frequency = m)
+      k_order <- sort(k.v, decreasing = TRUE)
+      fc_list <- list()
+      res_list <- list()
 
-      # Fit SARIMAX with NWP as exogenous variable
-      fit <- tryCatch({
-        auto.arima(train_ts,
-                   xreg = train_x,  # NWP as exogenous regressor
-                   seasonal = TRUE,
-                   stepwise = TRUE,
-                   approximation = TRUE,
-                   max.p = 3, max.q = 3,
-                   max.P = 2, max.Q = 2,
-                   max.d = 1, max.D = 1,
-                   allowdrift = FALSE)
-      }, error = function(e) {
-        # Fallback: try without xreg
-        tryCatch({
-          auto.arima(train_ts,
-                     seasonal = TRUE,
+      for (kk in k_order) {
+        ppd <- m / kk
+        n_fc <- h * ppd
+        n_train_k <- train.days * ppd
+
+        train_k <- aggregate_hourly_to_k(train_y_hourly, kk)
+        train_xk <- aggregate_hourly_to_k(train_x_hourly, kk)
+        test_xk <- aggregate_hourly_to_k(test_x_hourly, kk)
+
+        train_ts_k <- ts(train_k, frequency = max(ppd, 1))
+
+        fit_k <- tryCatch({
+          auto.arima(train_ts_k,
+                     xreg = train_xk,
+                     seasonal = ppd >= 2,
                      stepwise = TRUE,
                      approximation = TRUE,
+                     max.p = 3, max.q = 3,
+                     max.P = 2, max.Q = 2,
+                     max.d = 1, max.D = 1,
                      allowdrift = FALSE)
-        }, error = function(e2) {
-          # Ultimate fallback
-          Arima(train_ts, order = c(1, 0, 1),
-                seasonal = list(order = c(1, 0, 1), period = m))
+        }, error = function(e) {
+          tryCatch({
+            auto.arima(train_ts_k, seasonal = ppd >= 2,
+                       stepwise = TRUE, approximation = TRUE,
+                       allowdrift = FALSE)
+          }, error = function(e2) {
+            if (ppd >= 2) {
+              Arima(train_ts_k, order = c(1, 0, 0),
+                    seasonal = list(order = c(0, 0, 0), period = ppd))
+            } else {
+              Arima(train_ts_k, order = c(1, 0, 0))
+            }
+          })
         })
-      })
 
-      # Generate forecasts
-      fc <- tryCatch({
-        # If model has xreg, use newxreg for forecast
-        if (!is.null(fit$xreg)) {
-          forecast(fit, h = h * m, xreg = test_x)
-        } else {
-          forecast(fit, h = h * m)
+        fc_k <- tryCatch({
+          if (!is.null(fit_k$xreg)) {
+            pmax(as.numeric(forecast(fit_k, h = n_fc, xreg = test_xk)$mean), 0)
+          } else {
+            pmax(as.numeric(forecast(fit_k, h = n_fc)$mean), 0)
+          }
+        }, error = function(e) {
+          pmax(as.numeric(forecast(fit_k, h = n_fc)$mean), 0)
+        })
+
+        res_k <- as.numeric(residuals(fit_k))
+        res_k[is.na(res_k)] <- 0
+        if (length(res_k) < n_train_k) {
+          res_k <- c(rep(0, n_train_k - length(res_k)), res_k)
+        } else if (length(res_k) > n_train_k) {
+          res_k <- tail(res_k, n_train_k)
         }
-      }, error = function(e) {
-        # Fallback to simple forecast
-        forecast(fit, h = h * m)
-      })
 
-      fc_hourly <- as.numeric(fc$mean)
-      fc_hourly <- pmax(fc_hourly, 0)  # Non-negative
-
-      # Get in-sample residuals
-      residuals_hourly <- as.numeric(residuals(fit))
-      if (length(residuals_hourly) < train.days * m) {
-        residuals_hourly <- c(
-          rep(0, train.days * m - length(residuals_hourly)),
-          residuals_hourly
-        )
+        fc_list[[as.character(kk)]] <- fc_k
+        res_list[[as.character(kk)]] <- res_k
       }
 
-      # Create temporal hierarchies
-      Y.hat <- create_temporal_hierarchy(fc_hourly, k.v, m, h)
+      Y.hat <- assemble_yhat_from_levels(fc_list, k.v, m, h)
       Y.obs <- station_meas[(end_train + 1):end_test]
-      Res.insamp <- create_residual_hierarchy(residuals_hourly, k.v, m, train.days)
+      Res.insamp <- assemble_residuals_from_levels(res_list, k.v, m, train.days)
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
 
@@ -231,11 +237,9 @@ cat("\n========================================\n")
 cat("Processing Aggregated Series (L0 + L1)\n")
 cat("========================================\n")
 
-# Create aggregated data using S matrix
 S <- as.matrix(hts_info$S)
-n_upper <- nrow(S) - ncol(S)  # 6
+n_upper <- nrow(S) - ncol(S)
 
-# Aggregate measurement and prediction data
 meas_agg <- t(S[1:n_upper, , drop = FALSE] %*% t(meas))
 pred_agg <- t(S[1:n_upper, , drop = FALSE] %*% t(pred))
 
@@ -245,7 +249,7 @@ for (agg_idx in 1:n_upper) {
 
   agg_name <- agg_names[agg_idx]
   agg_meas <- meas_agg[, agg_idx]
-  agg_pred <- pred_agg[, agg_idx]  # Aggregated NWP
+  agg_pred <- pred_agg[, agg_idx]
 
   cat(sprintf("\n[Aggregate %d/%d] %s\n", agg_idx, n_upper, agg_name))
 
@@ -270,55 +274,75 @@ for (agg_idx in 1:n_upper) {
                     error = "Index out of bounds"))
       }
 
-      train_y <- agg_meas[start_idx:end_train]
-      train_x <- agg_pred[start_idx:end_train]
-      test_x <- agg_pred[(end_train + 1):end_test]
+      train_y_hourly <- agg_meas[start_idx:end_train]
+      train_x_hourly <- agg_pred[start_idx:end_train]
+      test_x_hourly <- agg_pred[(end_train + 1):end_test]
 
-      train_ts <- ts(train_y, frequency = m)
+      k_order <- sort(k.v, decreasing = TRUE)
+      fc_list <- list()
+      res_list <- list()
 
-      fit <- tryCatch({
-        auto.arima(train_ts,
-                   xreg = train_x,
-                   seasonal = TRUE,
-                   stepwise = TRUE,
-                   approximation = TRUE,
-                   max.p = 3, max.q = 3,
-                   max.P = 2, max.Q = 2,
-                   max.d = 1, max.D = 1,
-                   allowdrift = FALSE)
-      }, error = function(e) {
-        tryCatch({
-          auto.arima(train_ts, seasonal = TRUE, stepwise = TRUE,
-                     approximation = TRUE, allowdrift = FALSE)
-        }, error = function(e2) {
-          Arima(train_ts, order = c(1, 0, 1),
-                seasonal = list(order = c(1, 0, 1), period = m))
+      for (kk in k_order) {
+        ppd <- m / kk
+        n_fc <- h * ppd
+        n_train_k <- train.days * ppd
+
+        train_k <- aggregate_hourly_to_k(train_y_hourly, kk)
+        train_xk <- aggregate_hourly_to_k(train_x_hourly, kk)
+        test_xk <- aggregate_hourly_to_k(test_x_hourly, kk)
+
+        train_ts_k <- ts(train_k, frequency = max(ppd, 1))
+
+        fit_k <- tryCatch({
+          auto.arima(train_ts_k,
+                     xreg = train_xk,
+                     seasonal = ppd >= 2,
+                     stepwise = TRUE,
+                     approximation = TRUE,
+                     max.p = 3, max.q = 3,
+                     max.P = 2, max.Q = 2,
+                     max.d = 1, max.D = 1,
+                     allowdrift = FALSE)
+        }, error = function(e) {
+          tryCatch({
+            auto.arima(train_ts_k, seasonal = ppd >= 2,
+                       stepwise = TRUE, approximation = TRUE,
+                       allowdrift = FALSE)
+          }, error = function(e2) {
+            if (ppd >= 2) {
+              Arima(train_ts_k, order = c(1, 0, 0),
+                    seasonal = list(order = c(0, 0, 0), period = ppd))
+            } else {
+              Arima(train_ts_k, order = c(1, 0, 0))
+            }
+          })
         })
-      })
 
-      fc <- tryCatch({
-        if (!is.null(fit$xreg)) {
-          forecast(fit, h = h * m, xreg = test_x)
-        } else {
-          forecast(fit, h = h * m)
+        fc_k <- tryCatch({
+          if (!is.null(fit_k$xreg)) {
+            pmax(as.numeric(forecast(fit_k, h = n_fc, xreg = test_xk)$mean), 0)
+          } else {
+            pmax(as.numeric(forecast(fit_k, h = n_fc)$mean), 0)
+          }
+        }, error = function(e) {
+          pmax(as.numeric(forecast(fit_k, h = n_fc)$mean), 0)
+        })
+
+        res_k <- as.numeric(residuals(fit_k))
+        res_k[is.na(res_k)] <- 0
+        if (length(res_k) < n_train_k) {
+          res_k <- c(rep(0, n_train_k - length(res_k)), res_k)
+        } else if (length(res_k) > n_train_k) {
+          res_k <- tail(res_k, n_train_k)
         }
-      }, error = function(e) {
-        forecast(fit, h = h * m)
-      })
 
-      fc_hourly <- pmax(as.numeric(fc$mean), 0)
-
-      residuals_hourly <- as.numeric(residuals(fit))
-      if (length(residuals_hourly) < train.days * m) {
-        residuals_hourly <- c(
-          rep(0, train.days * m - length(residuals_hourly)),
-          residuals_hourly
-        )
+        fc_list[[as.character(kk)]] <- fc_k
+        res_list[[as.character(kk)]] <- res_k
       }
 
-      Y.hat <- create_temporal_hierarchy(fc_hourly, k.v, m, h)
+      Y.hat <- assemble_yhat_from_levels(fc_list, k.v, m, h)
       Y.obs <- agg_meas[(end_train + 1):end_test]
-      Res.insamp <- create_residual_hierarchy(residuals_hourly, k.v, m, train.days)
+      Res.insamp <- assemble_residuals_from_levels(res_list, k.v, m, train.days)
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
 
@@ -355,3 +379,4 @@ cat(sprintf("Aggregated series processed: %d\n", n_upper))
 cat(sprintf("Replications per series: %d\n", n_rep))
 cat(sprintf("Results saved to: %s\n", dir_sarimax))
 cat("NWP used as exogenous variable: YES\n")
+cat("Temporal levels: independent SARIMAX at each k level\n")

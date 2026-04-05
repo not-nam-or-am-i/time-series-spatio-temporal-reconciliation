@@ -92,78 +92,6 @@ cat(sprintf("  Y.obs rows: %d\n", n_yobs_rows))
 cat(sprintf("  Res.insamp rows: %d\n", n_res_rows))
 
 # ----------------------------------------
-# Feature creation function (NO NWP feature)
-# ----------------------------------------
-create_rf_features <- function(data, start_hour = 1) {
-  # Creates features for Random Forest training.
-  #
-  # Features (per baseline RF plan, minus NWP):
-  # - Lag features: lag_1, lag_24, lag_48, lag_168
-  # - Rolling statistics: rolling_mean_24, rolling_sd_24
-  # - Calendar features: hour_of_day, day_of_week, month (+ sin/cos)
-
-  n <- length(data)
-
-  features <- data.frame(
-    lag_1 = c(NA, data[1:(n - 1)]),
-    lag_24 = c(rep(NA, 24), data[1:(n - 24)]),
-    lag_48 = c(rep(NA, 48), data[1:(n - 48)]),
-    lag_168 = c(rep(NA, 168), data[1:(n - 168)])  # 1 week lag
-  )
-
-  # Rolling statistics (24-hour window)
-  rolling_mean <- rep(NA, n)
-  rolling_sd <- rep(NA, n)
-  for (i in 24:n) {
-    window <- data[(i - 23):i]
-    rolling_mean[i] <- mean(window, na.rm = TRUE)
-    rolling_sd[i] <- sd(window, na.rm = TRUE)
-  }
-  features$rolling_mean_24 <- rolling_mean
-  features$rolling_sd_24 <- rolling_sd
-
-  # Calendar features
-  hour_of_day <- ((start_hour - 1 + 0:(n - 1)) %% 24)
-  features$hour_of_day <- hour_of_day
-
-  # Proxies for day_of_week and month based on position
-  day_idx <- ((start_hour - 1 + 0:(n - 1)) %/% 24) + 1
-  features$day_of_week <- (day_idx - 1) %% 7
-  features$month <- ((day_idx - 1) %/% 30) %% 12 + 1
-
-  features$hour_sin <- sin(2 * pi * hour_of_day / 24)
-  features$hour_cos <- cos(2 * pi * hour_of_day / 24)
-
-  # Target variable
-  features$target <- data
-
-  features
-}
-
-# ----------------------------------------
-# Prediction feature creation (single step, NO NWP feature)
-# ----------------------------------------
-create_prediction_features <- function(current_data, current_hour, current_day) {
-  n <- length(current_data)
-
-  features <- data.frame(
-    lag_1 = current_data[n],
-    lag_24 = ifelse(n >= 24, current_data[n - 23], current_data[n]),
-    lag_48 = ifelse(n >= 48, current_data[n - 47], current_data[max(1, n - 23)]),
-    lag_168 = ifelse(n >= 168, current_data[n - 167], current_data[max(1, n - 23)]),
-    rolling_mean_24 = ifelse(n >= 24, mean(tail(current_data, 24)), mean(current_data)),
-    rolling_sd_24 = ifelse(n >= 24, sd(tail(current_data, 24)), sd(current_data)),
-    hour_of_day = current_hour %% 24,
-    day_of_week = (current_day - 1) %% 7,
-    month = ((current_day - 1) %/% 30) %% 12 + 1,
-    hour_sin = sin(2 * pi * (current_hour %% 24) / 24),
-    hour_cos = cos(2 * pi * (current_hour %% 24) / 24)
-  )
-
-  features
-}
-
-# ----------------------------------------
 # Setup parallel processing
 # ----------------------------------------
 cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
@@ -178,8 +106,9 @@ clusterExport(
   cl,
   c(
     "m", "h", "k.v", "train.days", "obs_per_day",
-    "create_temporal_hierarchy", "create_residual_hierarchy",
-    "create_rf_features", "create_prediction_features",
+    "aggregate_hourly_to_k",
+    "create_ml_features_at_k", "create_ml_pred_features_at_k",
+    "assemble_yhat_from_levels", "assemble_residuals_from_levels",
     "n_yhat_rows", "n_yobs_rows", "n_res_rows",
     "k_star"
   )
@@ -214,130 +143,98 @@ for (station_idx in 1:n_stations) {
       end_test <- end_train + h * obs_per_day
 
       if (end_test > length(station_meas)) {
-        return(list(
-          Y.hat = rep(NA, n_yhat_rows),
-          Y.obs = rep(NA, n_yobs_rows),
-          Res.insamp = rep(NA, n_res_rows),
-          error = "Index out of bounds"
-        ))
+        return(list(Y.hat = rep(NA, n_yhat_rows),
+                    Y.obs = rep(NA, n_yobs_rows),
+                    Res.insamp = rep(NA, n_res_rows),
+                    error = "Index out of bounds"))
       }
 
-      # Extract training period data (RF features train on lag/rolling/calendar only)
-      train_y <- station_meas[start_idx:end_train]
-      train_x <- station_pred[start_idx:end_train] # only for residual replacement at k=1
-      forecast_nwp <- station_pred[(end_train + 1):end_test] # only for Y.hat replacement at k=1
-
-      # Need extra history for lag and rolling features (1 week = 168 hours)
       extended_start <- max(1, start_idx - 168)
-      extended_meas <- station_meas[extended_start:end_train]
+      extended_meas_hourly <- station_meas[extended_start:end_train]
+      train_y_hourly <- station_meas[start_idx:end_train]
+      train_x_hourly <- station_pred[start_idx:end_train]
+      test_nwp_hourly <- station_pred[(end_train + 1):end_test]
 
-      # Feature creation with aligned calendar features
-      start_hour_offset <- extended_start
-      features <- create_rf_features(extended_meas, start_hour_offset)
+      k_order <- sort(k.v, decreasing = TRUE)
+      fc_list <- list()
+      res_list <- list()
 
-      # Remove rows with NA (due to lags)
-      features_clean <- features[complete.cases(features), ]
+      for (kk in k_order) {
+        ppd <- m / kk
+        n_fc <- h * ppd
+        n_train_k <- train.days * ppd
 
-      if (nrow(features_clean) < 100) {
-        return(list(
-          Y.hat = rep(NA, n_yhat_rows),
-          Y.obs = rep(NA, n_yobs_rows),
-          Res.insamp = rep(NA, n_res_rows),
-          error = "Insufficient training data"
-        ))
+        if (kk == 1) {
+          # k=1: NWP replacement (matching ETS hybrid approach)
+          fc_list[["1"]] <- pmax(test_nwp_hourly, 0)
+          res_list[["1"]] <- train_x_hourly - train_y_hourly
+        } else {
+          # k>1: independent RF (no NWP feature)
+          extended_k <- aggregate_hourly_to_k(extended_meas_hourly, kk)
+          train_k <- aggregate_hourly_to_k(train_y_hourly, kk)
+
+          ext_start_period <- (extended_start - 1) %/% kk + 1
+          features <- create_ml_features_at_k(extended_k, kk, m,
+                                              nwp_data = NULL,
+                                              start_period = ext_start_period)
+          features_clean <- features[complete.cases(features), ]
+
+          if (nrow(features_clean) < 5) {
+            fc_list[[as.character(kk)]] <- rep(0, n_fc)
+            res_list[[as.character(kk)]] <- rep(0, n_train_k)
+            next
+          }
+
+          feature_names <- setdiff(names(features_clean), "target")
+          rf_model <- ranger(
+            target ~ . - target,
+            data = features_clean,
+            num.trees = 500,
+            mtry = min(floor(sqrt(length(feature_names))), length(feature_names)),
+            min.node.size = min(5, max(1, nrow(features_clean) - 1)),
+            importance = "none",
+            seed = 42 + rp
+          )
+
+          fc_k <- numeric(n_fc)
+          current_data <- train_k
+          fc_start_period <- end_train %/% kk + 1
+
+          for (step in 1:n_fc) {
+            new_features <- create_ml_pred_features_at_k(
+              current_data, kk, m,
+              nwp_value = NULL,
+              current_period = fc_start_period + step - 1
+            )
+            pred_val <- max(predict(rf_model, new_features)$predictions, 0)
+            fc_k[step] <- pred_val
+            current_data <- c(current_data, pred_val)
+          }
+
+          train_pred <- predict(rf_model, features_clean[, feature_names, drop = FALSE])$predictions
+          residuals_k <- features_clean$target - train_pred
+
+          if (length(residuals_k) < n_train_k) {
+            residuals_k <- c(rep(0, n_train_k - length(residuals_k)), residuals_k)
+          } else if (length(residuals_k) > n_train_k) {
+            residuals_k <- tail(residuals_k, n_train_k)
+          }
+
+          fc_list[[as.character(kk)]] <- fc_k
+          res_list[[as.character(kk)]] <- residuals_k
+        }
       }
 
-      rf_model <- ranger(
-        target ~ . - target,
-        data = features_clean,
-        num.trees = 500,
-        mtry = floor(sqrt(ncol(features_clean) - 1)),
-        min.node.size = 5,
-        importance = "none",
-        seed = 42 + rp
-      )
-
-      # Recursive multi-step forecasting (RF only)
-      fc_hourly_rf <- numeric(h * m)
-      current_data <- train_y
-
-      current_hour <- end_train + 1
-      current_day <- (end_train %/% 24) + 1
-
-      for (step in 1:(h * m)) {
-        new_features <- create_prediction_features(
-          current_data,
-          current_hour,
-          current_day
-        )
-
-        pred_val <- predict(rf_model, new_features)$predictions
-        pred_val <- max(pred_val, 0) # non-negative at generation time
-
-        fc_hourly_rf[step] <- pred_val
-
-        current_data <- c(current_data, pred_val)
-        current_hour <- current_hour + 1
-        if ((current_hour - 1) %% 24 == 0) current_day <- current_day + 1
-      }
-
-      # In-sample residuals (RF residuals at all k)
-      train_features <- features_clean[, names(features_clean) != "target"]
-      train_pred <- predict(rf_model, train_features)$predictions
-      residuals_hourly_rf <- features_clean$target - train_pred
-
-      # Pad/trim residuals to full train window length (train.days * m)
-      n_expected_res <- train.days * m
-      if (length(residuals_hourly_rf) < n_expected_res) {
-        residuals_hourly_rf <- c(
-          rep(0, n_expected_res - length(residuals_hourly_rf)),
-          residuals_hourly_rf
-        )
-      } else if (length(residuals_hourly_rf) > n_expected_res) {
-        residuals_hourly_rf <- tail(residuals_hourly_rf, n_expected_res)
-      }
-
-      # Build temporal hierarchy from RF hourly forecasts
-      Y.hat <- create_temporal_hierarchy(fc_hourly_rf, k.v, m, h)
+      Y.hat <- assemble_yhat_from_levels(fc_list, k.v, m, h)
       Y.obs <- station_meas[(end_train + 1):end_test]
-
-      # ----------------------------------------
-      # L2 replacement: overwrite ONLY k=1 rows
-      # ----------------------------------------
-      nwp_hourly <- pmax(forecast_nwp, 0)
-
-      hourly_offset <- k_star - m # start offset within each day block for k=1 rows
-      for (day in 1:h) {
-        y_day_offset <- (day - 1) * k_star
-        row_start <- y_day_offset + hourly_offset + 1
-        row_end <- y_day_offset + k_star
-        # Note: use explicit ((day-1)*m+1):(day*m); (day-1)*m + 1:day*m parses as (day-1)*m + (1:day)*m
-        Y.hat[row_start:row_end] <- nwp_hourly[((day - 1) * m + 1):(day * m)]
-      }
-      Y.hat <- pmax(Y.hat, 0)
-
-      # Residual hierarchy from RF residuals (then overwrite k=1 segment)
-      Res.insamp <- create_residual_hierarchy(residuals_hourly_rf, k.v, m, train.days)
-
-      # NWP residuals at hourly level over the training window
-      nwp_residuals_hourly <- train_x - train_y
-
-      for (day in 1:train.days) {
-        r_day_offset <- (day - 1) * k_star
-        r_row_start <- r_day_offset + hourly_offset + 1
-        r_row_end <- r_day_offset + k_star
-        Res.insamp[r_row_start:r_row_end] <-
-          nwp_residuals_hourly[((day - 1) * m + 1):(day * m)]
-      }
+      Res.insamp <- assemble_residuals_from_levels(res_list, k.v, m, train.days)
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
     }, error = function(e) {
-      list(
-        Y.hat = rep(NA, n_yhat_rows),
-        Y.obs = rep(NA, n_yobs_rows),
-        Res.insamp = rep(NA, n_res_rows),
-        error = as.character(e)
-      )
+      list(Y.hat = rep(NA, n_yhat_rows),
+           Y.obs = rep(NA, n_yobs_rows),
+           Res.insamp = rep(NA, n_res_rows),
+           error = as.character(e))
     })
   }
 
@@ -389,90 +286,89 @@ for (agg_idx in 1:n_upper) {
       end_test <- end_train + h * obs_per_day
 
       if (end_test > length(agg_meas)) {
-        return(list(
-          Y.hat = rep(NA, n_yhat_rows),
-          Y.obs = rep(NA, n_yobs_rows),
-          Res.insamp = rep(NA, n_res_rows),
-          error = "Index out of bounds"
-        ))
+        return(list(Y.hat = rep(NA, n_yhat_rows),
+                    Y.obs = rep(NA, n_yobs_rows),
+                    Res.insamp = rep(NA, n_res_rows),
+                    error = "Index out of bounds"))
       }
 
       extended_start <- max(1, start_idx - 168)
-      extended_meas <- agg_meas[extended_start:end_train]
+      extended_meas_hourly <- agg_meas[extended_start:end_train]
+      train_y_hourly <- agg_meas[start_idx:end_train]
 
-      features <- create_rf_features(extended_meas, extended_start)
-      features_clean <- features[complete.cases(features), ]
+      k_order <- sort(k.v, decreasing = TRUE)
+      fc_list <- list()
+      res_list <- list()
 
-      if (nrow(features_clean) < 100) {
-        return(list(
-          Y.hat = rep(NA, n_yhat_rows),
-          Y.obs = rep(NA, n_yobs_rows),
-          Res.insamp = rep(NA, n_res_rows),
-          error = "Insufficient training data"
-        ))
-      }
+      for (kk in k_order) {
+        ppd <- m / kk
+        n_fc <- h * ppd
+        n_train_k <- train.days * ppd
 
-      rf_model <- ranger(
-        target ~ . - target,
-        data = features_clean,
-        num.trees = 500,
-        mtry = floor(sqrt(ncol(features_clean) - 1)),
-        min.node.size = 5,
-        importance = "none",
-        seed = 42 + rp
-      )
+        extended_k <- aggregate_hourly_to_k(extended_meas_hourly, kk)
+        train_k <- aggregate_hourly_to_k(train_y_hourly, kk)
 
-      # Recursive multi-step forecasting (RF only)
-      fc_hourly_rf <- numeric(h * m)
-      train_y <- agg_meas[start_idx:end_train]
-      current_data <- train_y
+        ext_start_period <- (extended_start - 1) %/% kk + 1
+        features <- create_ml_features_at_k(extended_k, kk, m,
+                                            nwp_data = NULL,
+                                            start_period = ext_start_period)
+        features_clean <- features[complete.cases(features), ]
 
-      current_hour <- end_train + 1
-      current_day <- (end_train %/% 24) + 1
+        if (nrow(features_clean) < 5) {
+          fc_list[[as.character(kk)]] <- rep(0, n_fc)
+          res_list[[as.character(kk)]] <- rep(0, n_train_k)
+          next
+        }
 
-      for (step in 1:(h * m)) {
-        new_features <- create_prediction_features(
-          current_data,
-          current_hour,
-          current_day
+        feature_names <- setdiff(names(features_clean), "target")
+        rf_model <- ranger(
+          target ~ . - target,
+          data = features_clean,
+          num.trees = 500,
+          mtry = min(floor(sqrt(length(feature_names))), length(feature_names)),
+          min.node.size = min(5, max(1, nrow(features_clean) - 1)),
+          importance = "none",
+          seed = 42 + rp
         )
 
-        pred_val <- predict(rf_model, new_features)$predictions
-        pred_val <- max(pred_val, 0)
-        fc_hourly_rf[step] <- pred_val
+        fc_k <- numeric(n_fc)
+        current_data <- train_k
+        fc_start_period <- end_train %/% kk + 1
 
-        current_data <- c(current_data, pred_val)
-        current_hour <- current_hour + 1
-        if ((current_hour - 1) %% 24 == 0) current_day <- current_day + 1
+        for (step in 1:n_fc) {
+          new_features <- create_ml_pred_features_at_k(
+            current_data, kk, m,
+            nwp_value = NULL,
+            current_period = fc_start_period + step - 1
+          )
+          pred_val <- max(predict(rf_model, new_features)$predictions, 0)
+          fc_k[step] <- pred_val
+          current_data <- c(current_data, pred_val)
+        }
+
+        train_pred <- predict(rf_model, features_clean[, feature_names, drop = FALSE])$predictions
+        residuals_k <- features_clean$target - train_pred
+
+        if (length(residuals_k) < n_train_k) {
+          residuals_k <- c(rep(0, n_train_k - length(residuals_k)), residuals_k)
+        } else if (length(residuals_k) > n_train_k) {
+          residuals_k <- tail(residuals_k, n_train_k)
+        }
+
+        fc_list[[as.character(kk)]] <- fc_k
+        res_list[[as.character(kk)]] <- residuals_k
       }
 
-      train_features <- features_clean[, names(features_clean) != "target"]
-      train_pred <- predict(rf_model, train_features)$predictions
-      residuals_hourly_rf <- features_clean$target - train_pred
-
-      n_expected_res <- train.days * m
-      if (length(residuals_hourly_rf) < n_expected_res) {
-        residuals_hourly_rf <- c(
-          rep(0, n_expected_res - length(residuals_hourly_rf)),
-          residuals_hourly_rf
-        )
-      } else if (length(residuals_hourly_rf) > n_expected_res) {
-        residuals_hourly_rf <- tail(residuals_hourly_rf, n_expected_res)
-      }
-
-      Y.hat <- create_temporal_hierarchy(fc_hourly_rf, k.v, m, h)
-      Y.hat <- pmax(Y.hat, 0)
+      Y.hat <- assemble_yhat_from_levels(fc_list, k.v, m, h)
       Y.obs <- agg_meas[(end_train + 1):end_test]
-      Res.insamp <- create_residual_hierarchy(residuals_hourly_rf, k.v, m, train.days)
+      Res.insamp <- assemble_residuals_from_levels(res_list, k.v, m, train.days)
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
     }, error = function(e) {
-      list(
-        Y.hat = rep(NA, n_yhat_rows),
-        Y.obs = rep(NA, n_yobs_rows),
-        Res.insamp = rep(NA, n_res_rows),
-        error = as.character(e)
-      )
+      list(Y.hat = rep(NA, n_yhat_rows),
+           Y.obs = rep(NA, n_yobs_rows),
+           Res.insamp = rep(NA, n_res_rows),
+           error = as.character(e))
     })
   }
 
@@ -501,13 +397,10 @@ cat(sprintf("Aggregated series processed: %d\n", n_upper))
 cat(sprintf("Replications per series: %d\n", n_rep))
 cat(sprintf("Results saved to: %s\n", dir_rf_nwp))
 
-cat("\nFeatures used:\n")
-cat("  - NWP predictions as RF feature: NO (training excludes NWP)\n")
-cat("  - Lag features: lag_1, lag_24, lag_48, lag_168\n")
-cat("  - Rolling stats: rolling_mean_24h, rolling_sd_24h\n")
-cat("  - Calendar features: hour_of_day, day_of_week, month (+ sin/cos)\n")
-
-cat("\nReplacement policy:\n")
-cat("  - L2 (k=1 hourly rows in Y.hat): replaced by NWP hourly (clipped at 0)\n")
-cat("  - L2 (k=1 hourly segment in Res.insamp): replaced by NWP residuals\n")
+cat("\nApproach:\n")
+cat("  - Independent RF model at each temporal aggregation level k\n")
+cat("  - Features: lag (1-period, 1-day, 2-day, 1-week), rolling stats, calendar (no NWP)\n")
+cat("  - L2 k=1: NWP hourly replacement (forecasts + residuals)\n")
+cat("  - L2 k>1: independent RF at that temporal level\n")
+cat("  - L0+L1: independent RF at each k level (no NWP)\n")
 

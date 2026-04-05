@@ -80,69 +80,6 @@ cat(sprintf("  Y.obs rows: %d\n", n_yobs_rows))
 cat(sprintf("  Res.insamp rows: %d\n", n_res_rows))
 
 # ----------------------------------------
-# Feature creation function (same as RF)
-# ----------------------------------------
-create_lgbm_features <- function(data, nwp_data, start_hour = 1) {
-  n <- length(data)
-
-  features <- data.frame(
-    nwp = nwp_data,
-    lag_1 = c(NA, data[1:(n - 1)]),
-    lag_24 = c(rep(NA, 24), data[1:(n - 24)]),
-    lag_48 = c(rep(NA, 48), data[1:(n - 48)]),
-    lag_168 = c(rep(NA, 168), data[1:(n - 168)])
-  )
-
-  # Rolling statistics (24-hour window)
-  rolling_mean <- rep(NA, n)
-  rolling_sd <- rep(NA, n)
-  for (i in 24:n) {
-    window <- data[(i - 23):i]
-    rolling_mean[i] <- mean(window, na.rm = TRUE)
-    rolling_sd[i] <- sd(window, na.rm = TRUE)
-  }
-  features$rolling_mean_24 <- rolling_mean
-  features$rolling_sd_24 <- rolling_sd
-
-  # Calendar features
-  hour_of_day <- ((start_hour - 1 + 0:(n - 1)) %% 24)
-  features$hour_of_day <- hour_of_day
-
-  day_idx <- ((start_hour - 1 + 0:(n - 1)) %/% 24) + 1
-  features$day_of_week <- (day_idx - 1) %% 7
-  features$month <- ((day_idx - 1) %/% 30) %% 12 + 1
-
-  features$hour_sin <- sin(2 * pi * hour_of_day / 24)
-  features$hour_cos <- cos(2 * pi * hour_of_day / 24)
-
-  features$target <- data
-
-  return(features)
-}
-
-# Feature creation for prediction (single step)
-create_lgbm_prediction_features <- function(current_data, nwp_value, current_hour, current_day) {
-  n <- length(current_data)
-
-  features <- data.frame(
-    nwp = nwp_value,
-    lag_1 = current_data[n],
-    lag_24 = ifelse(n >= 24, current_data[n - 23], current_data[n]),
-    lag_48 = ifelse(n >= 48, current_data[n - 47], current_data[max(1, n - 23)]),
-    lag_168 = ifelse(n >= 168, current_data[n - 167], current_data[max(1, n - 23)]),
-    rolling_mean_24 = ifelse(n >= 24, mean(tail(current_data, 24)), mean(current_data)),
-    rolling_sd_24 = ifelse(n >= 24, sd(tail(current_data, 24)), sd(current_data)),
-    hour_of_day = current_hour %% 24,
-    day_of_week = (current_day - 1) %% 7,
-    month = ((current_day - 1) %/% 30) %% 12 + 1,
-    hour_sin = sin(2 * pi * (current_hour %% 24) / 24),
-    hour_cos = cos(2 * pi * (current_hour %% 24) / 24)
-  )
-
-  return(features)
-}
-
-# ----------------------------------------
 # LightGBM hyperparameters
 # ----------------------------------------
 lgbm_params <- list(
@@ -176,8 +113,9 @@ cl <- makeCluster(ncores)
 registerDoSNOW(cl)
 
 clusterExport(cl, c("m", "h", "k.v", "train.days", "obs_per_day",
-                    "create_temporal_hierarchy", "create_residual_hierarchy",
-                    "create_lgbm_features", "create_lgbm_prediction_features",
+                    "aggregate_hourly_to_k",
+                    "create_ml_features_at_k", "create_ml_pred_features_at_k",
+                    "assemble_yhat_from_levels", "assemble_residuals_from_levels",
                     "lgbm_params", "lgbm_nrounds",
                     "n_yhat_rows", "n_yobs_rows", "n_res_rows"))
 
@@ -219,85 +157,87 @@ for (station_idx in 1:n_stations) {
                     error = "Index out of bounds"))
       }
 
-      # Need extra history for lag and rolling features (1 week = 168 hours)
       extended_start <- max(1, start_idx - 168)
-      extended_meas <- station_meas[extended_start:end_train]
-      extended_pred <- station_pred[extended_start:end_train]
+      extended_meas_hourly <- station_meas[extended_start:end_train]
+      extended_nwp_hourly <- station_pred[extended_start:end_train]
+      train_y_hourly <- station_meas[start_idx:end_train]
+      test_nwp_hourly <- station_pred[(end_train + 1):end_test]
 
-      # Create features with extended data
-      start_hour_offset <- extended_start
-      features <- create_lgbm_features(extended_meas, extended_pred, start_hour_offset)
+      k_order <- sort(k.v, decreasing = TRUE)
+      fc_list <- list()
+      res_list <- list()
 
-      # Remove rows with NA (due to lags)
-      features_clean <- features[complete.cases(features), ]
+      for (kk in k_order) {
+        ppd <- m / kk
+        n_fc <- h * ppd
+        n_train_k <- train.days * ppd
 
-      if (nrow(features_clean) < 100) {
-        return(list(Y.hat = rep(NA, n_yhat_rows),
-                    Y.obs = rep(NA, n_yobs_rows),
-                    Res.insamp = rep(NA, n_res_rows),
-                    error = "Insufficient training data"))
-      }
+        extended_k <- aggregate_hourly_to_k(extended_meas_hourly, kk)
+        extended_nwp_k <- aggregate_hourly_to_k(extended_nwp_hourly, kk)
+        train_k <- aggregate_hourly_to_k(train_y_hourly, kk)
+        test_nwp_k <- aggregate_hourly_to_k(test_nwp_hourly, kk)
 
-      # Train LightGBM
-      feature_names <- setdiff(names(features_clean), "target")
-      dtrain <- lgb.Dataset(
-        data = as.matrix(features_clean[, feature_names]),
-        label = features_clean$target
-      )
+        ext_start_period <- (extended_start - 1) %/% kk + 1
+        features <- create_ml_features_at_k(extended_k, kk, m,
+                                            nwp_data = extended_nwp_k,
+                                            start_period = ext_start_period)
+        features_clean <- features[complete.cases(features), ]
 
-      lgb_model <- lgb.train(
-        params = lgbm_params,
-        data = dtrain,
-        nrounds = lgbm_nrounds,
-        verbose = -1
-      )
+        if (nrow(features_clean) < 5) {
+          fc_list[[as.character(kk)]] <- rep(0, n_fc)
+          res_list[[as.character(kk)]] <- rep(0, n_train_k)
+          next
+        }
 
-      # Recursive multi-step forecasting with NWP
-      fc_hourly <- numeric(h * m)
-      train_data <- station_meas[start_idx:end_train]
-      current_data <- train_data
-      forecast_nwp <- station_pred[(end_train + 1):end_test]
+        feature_names <- setdiff(names(features_clean), "target")
 
-      # Track hour and day for calendar features
-      current_hour <- end_train + 1
-      current_day <- (end_train %/% 24) + 1
+        params_k <- lgbm_params
+        params_k$min_data_in_leaf <- min(lgbm_params$min_data_in_leaf,
+                                         max(1, nrow(features_clean) %/% 3))
 
-      for (step in 1:(h * m)) {
-        new_features <- create_lgbm_prediction_features(
-          current_data,
-          forecast_nwp[step],
-          current_hour,
-          current_day
+        dtrain <- lgb.Dataset(
+          data = as.matrix(features_clean[, feature_names]),
+          label = features_clean$target
         )
 
-        pred_val <- predict(lgb_model, as.matrix(new_features[, feature_names]))
-        pred_val <- max(pred_val, 0)  # Non-negative
+        lgb_model <- lgb.train(
+          params = params_k,
+          data = dtrain,
+          nrounds = lgbm_nrounds,
+          verbose = -1
+        )
 
-        fc_hourly[step] <- pred_val
+        fc_k <- numeric(n_fc)
+        current_data <- train_k
+        fc_start_period <- end_train %/% kk + 1
 
-        current_data <- c(current_data, pred_val)
-        current_hour <- current_hour + 1
-        if ((current_hour - 1) %% 24 == 0) {
-          current_day <- current_day + 1
+        for (step in 1:n_fc) {
+          new_features <- create_ml_pred_features_at_k(
+            current_data, kk, m,
+            nwp_value = test_nwp_k[step],
+            current_period = fc_start_period + step - 1
+          )
+          pred_val <- max(predict(lgb_model, as.matrix(new_features[, feature_names])), 0)
+          fc_k[step] <- pred_val
+          current_data <- c(current_data, pred_val)
         }
+
+        train_pred <- predict(lgb_model, as.matrix(features_clean[, feature_names]))
+        residuals_k <- features_clean$target - train_pred
+
+        if (length(residuals_k) < n_train_k) {
+          residuals_k <- c(rep(0, n_train_k - length(residuals_k)), residuals_k)
+        } else if (length(residuals_k) > n_train_k) {
+          residuals_k <- tail(residuals_k, n_train_k)
+        }
+
+        fc_list[[as.character(kk)]] <- fc_k
+        res_list[[as.character(kk)]] <- residuals_k
       }
 
-      # In-sample residuals
-      train_pred <- predict(lgb_model, as.matrix(features_clean[, feature_names]))
-      residuals_hourly <- features_clean$target - train_pred
-
-      # Pad/trim residuals
-      n_expected_res <- train.days * m
-      if (length(residuals_hourly) < n_expected_res) {
-        residuals_hourly <- c(rep(0, n_expected_res - length(residuals_hourly)), residuals_hourly)
-      } else if (length(residuals_hourly) > n_expected_res) {
-        residuals_hourly <- tail(residuals_hourly, n_expected_res)
-      }
-
-      # Create temporal hierarchies
-      Y.hat <- create_temporal_hierarchy(fc_hourly, k.v, m, h)
+      Y.hat <- assemble_yhat_from_levels(fc_list, k.v, m, h)
       Y.obs <- station_meas[(end_train + 1):end_test]
-      Res.insamp <- create_residual_hierarchy(residuals_hourly, k.v, m, train.days)
+      Res.insamp <- assemble_residuals_from_levels(res_list, k.v, m, train.days)
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
 
@@ -331,7 +271,6 @@ cat("========================================\n")
 S <- as.matrix(hts_info$S)
 n_upper <- nrow(S) - ncol(S)
 
-# Aggregate both measurement and prediction data
 meas_agg <- t(S[1:n_upper, , drop = FALSE] %*% t(meas))
 pred_agg <- t(S[1:n_upper, , drop = FALSE] %*% t(pred))
 
@@ -367,68 +306,86 @@ for (agg_idx in 1:n_upper) {
       }
 
       extended_start <- max(1, start_idx - 168)
-      extended_meas <- agg_meas[extended_start:end_train]
-      extended_pred <- agg_pred[extended_start:end_train]
+      extended_meas_hourly <- agg_meas[extended_start:end_train]
+      extended_nwp_hourly <- agg_pred[extended_start:end_train]
+      train_y_hourly <- agg_meas[start_idx:end_train]
+      test_nwp_hourly <- agg_pred[(end_train + 1):end_test]
 
-      features <- create_lgbm_features(extended_meas, extended_pred, extended_start)
-      features_clean <- features[complete.cases(features), ]
+      k_order <- sort(k.v, decreasing = TRUE)
+      fc_list <- list()
+      res_list <- list()
 
-      if (nrow(features_clean) < 100) {
-        return(list(Y.hat = rep(NA, n_yhat_rows),
-                    Y.obs = rep(NA, n_yobs_rows),
-                    Res.insamp = rep(NA, n_res_rows),
-                    error = "Insufficient training data"))
-      }
+      for (kk in k_order) {
+        ppd <- m / kk
+        n_fc <- h * ppd
+        n_train_k <- train.days * ppd
 
-      feature_names <- setdiff(names(features_clean), "target")
-      dtrain <- lgb.Dataset(
-        data = as.matrix(features_clean[, feature_names]),
-        label = features_clean$target
-      )
+        extended_k <- aggregate_hourly_to_k(extended_meas_hourly, kk)
+        extended_nwp_k <- aggregate_hourly_to_k(extended_nwp_hourly, kk)
+        train_k <- aggregate_hourly_to_k(train_y_hourly, kk)
+        test_nwp_k <- aggregate_hourly_to_k(test_nwp_hourly, kk)
 
-      lgb_model <- lgb.train(
-        params = lgbm_params,
-        data = dtrain,
-        nrounds = lgbm_nrounds,
-        verbose = -1
-      )
+        ext_start_period <- (extended_start - 1) %/% kk + 1
+        features <- create_ml_features_at_k(extended_k, kk, m,
+                                            nwp_data = extended_nwp_k,
+                                            start_period = ext_start_period)
+        features_clean <- features[complete.cases(features), ]
 
-      fc_hourly <- numeric(h * m)
-      train_data <- agg_meas[start_idx:end_train]
-      current_data <- train_data
-      forecast_nwp <- agg_pred[(end_train + 1):end_test]
+        if (nrow(features_clean) < 5) {
+          fc_list[[as.character(kk)]] <- rep(0, n_fc)
+          res_list[[as.character(kk)]] <- rep(0, n_train_k)
+          next
+        }
 
-      current_hour <- end_train + 1
-      current_day <- (end_train %/% 24) + 1
+        feature_names <- setdiff(names(features_clean), "target")
 
-      for (step in 1:(h * m)) {
-        new_features <- create_lgbm_prediction_features(
-          current_data,
-          forecast_nwp[step],
-          current_hour,
-          current_day
+        params_k <- lgbm_params
+        params_k$min_data_in_leaf <- min(lgbm_params$min_data_in_leaf,
+                                         max(1, nrow(features_clean) %/% 3))
+
+        dtrain <- lgb.Dataset(
+          data = as.matrix(features_clean[, feature_names]),
+          label = features_clean$target
         )
 
-        pred_val <- max(predict(lgb_model, as.matrix(new_features[, feature_names])), 0)
-        fc_hourly[step] <- pred_val
-        current_data <- c(current_data, pred_val)
-        current_hour <- current_hour + 1
-        if ((current_hour - 1) %% 24 == 0) current_day <- current_day + 1
+        lgb_model <- lgb.train(
+          params = params_k,
+          data = dtrain,
+          nrounds = lgbm_nrounds,
+          verbose = -1
+        )
+
+        fc_k <- numeric(n_fc)
+        current_data <- train_k
+        fc_start_period <- end_train %/% kk + 1
+
+        for (step in 1:n_fc) {
+          new_features <- create_ml_pred_features_at_k(
+            current_data, kk, m,
+            nwp_value = test_nwp_k[step],
+            current_period = fc_start_period + step - 1
+          )
+          pred_val <- max(predict(lgb_model, as.matrix(new_features[, feature_names])), 0)
+          fc_k[step] <- pred_val
+          current_data <- c(current_data, pred_val)
+        }
+
+        train_pred <- predict(lgb_model, as.matrix(features_clean[, feature_names]))
+        residuals_k <- features_clean$target - train_pred
+
+        if (length(residuals_k) < n_train_k) {
+          residuals_k <- c(rep(0, n_train_k - length(residuals_k)), residuals_k)
+        } else if (length(residuals_k) > n_train_k) {
+          residuals_k <- tail(residuals_k, n_train_k)
+        }
+
+        fc_list[[as.character(kk)]] <- fc_k
+        res_list[[as.character(kk)]] <- residuals_k
       }
 
-      train_pred <- predict(lgb_model, as.matrix(features_clean[, feature_names]))
-      residuals_hourly <- features_clean$target - train_pred
-
-      n_expected_res <- train.days * m
-      if (length(residuals_hourly) < n_expected_res) {
-        residuals_hourly <- c(rep(0, n_expected_res - length(residuals_hourly)), residuals_hourly)
-      } else if (length(residuals_hourly) > n_expected_res) {
-        residuals_hourly <- tail(residuals_hourly, n_expected_res)
-      }
-
-      Y.hat <- create_temporal_hierarchy(fc_hourly, k.v, m, h)
+      Y.hat <- assemble_yhat_from_levels(fc_list, k.v, m, h)
       Y.obs <- agg_meas[(end_train + 1):end_test]
-      Res.insamp <- create_residual_hierarchy(residuals_hourly, k.v, m, train.days)
+      Res.insamp <- assemble_residuals_from_levels(res_list, k.v, m, train.days)
 
       list(Y.hat = Y.hat, Y.obs = Y.obs, Res.insamp = Res.insamp, error = NULL)
 
@@ -464,10 +421,9 @@ cat(sprintf("Total stations processed: %d\n", n_stations))
 cat(sprintf("Aggregated series processed: %d\n", n_upper))
 cat(sprintf("Replications per series: %d\n", n_rep))
 cat(sprintf("Results saved to: %s\n", dir_lgbm))
-cat("\nFeatures used:\n")
-cat("  - NWP predictions: YES\n")
-cat("  - Lag features: lag_1h, lag_24h, lag_48h, lag_168h\n")
-cat("  - Rolling stats: rolling_mean_24h, rolling_sd_24h\n")
-cat("  - Calendar features: hour_of_day, day_of_week, month (+ sin/cos)\n")
-cat(sprintf("\nLightGBM: %d rounds, lr=%.2f, %d leaves\n",
+cat("\nApproach:\n")
+cat("  - Independent LightGBM model at each temporal aggregation level k\n")
+cat("  - Features: NWP, lag (1-period, 1-day, 2-day, 1-week), rolling stats, calendar\n")
+cat("  - Recursive multi-step forecasting at each k level\n")
+cat(sprintf("  - LightGBM: %d rounds, lr=%.2f, %d leaves\n",
             lgbm_nrounds, lgbm_params$learning_rate, lgbm_params$num_leaves))
