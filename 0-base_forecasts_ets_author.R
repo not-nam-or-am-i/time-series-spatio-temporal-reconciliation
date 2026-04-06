@@ -5,7 +5,8 @@
 #   - L0+L1: Pure ETS via thief:::th.forecast(), no clipping
 #   - L2: Hybrid ETS+NWP (NWP replaces hourly), no clipping
 #   - Residuals stored as list per replication (author format)
-# Adapted only for: our file paths, parallel setup, and output naming
+# Adapted for: our file paths, output naming, and one cluster for the full run
+# (author reference uses registerDoParallel per outer series; logic unchanged)
 # ========================================
 
 rm(list = ls(all = TRUE))
@@ -61,6 +62,24 @@ n_rep <- length(rep_range)
 # Output directory (separate from our ETS to allow comparison)
 dir.create(dir_ets_author, showWarnings = FALSE, recursive = TRUE)
 
+# ----------------------------------------
+# Single parallel cluster for entire script (re-used per series; only Y / Y+NWP re-exported)
+# ----------------------------------------
+cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
+# for local machine
+# cl <- makeCluster(ncores)
+# for SLURM cluster
+cl <- parallel::makeCluster(ncores, type = "PSOCK")
+registerDoSNOW(cl)
+clusterEvalQ(cl, {
+  library(thief)
+})
+clusterExport(
+  cl,
+  c("m", "k.v", "k.s", "Mk.v", "train.days", "forecast.horizon", "rep_range"),
+  envir = .GlobalEnv
+)
+
 #################################################################################
 # BLOCK 1: L0 + L1 — Pure ETS (matches author lines 32-80)
 #################################################################################
@@ -78,15 +97,7 @@ for (st in 1:ncol(L01)) {
 
   Y <- ts(L01[, st], freq = m)
 
-  # Setup parallel
-  # for local machine
-  cl <- makeCluster(ncores)
-  # for SLURM cluster
-  # cl <- parallel::makeCluster(ncores, type = "PSOCK")
-  registerDoSNOW(cl)
-  clusterEvalQ(cl, { library(thief) })
-  clusterExport(cl, c("Y", "m", "k.v", "k.s", "Mk.v",
-                       "train.days", "forecast.horizon"))
+  clusterExport(cl, c("Y"), envir = .GlobalEnv)
 
   pb <- txtProgressBar(max = n_rep, style = 3)
   progress_fn <- function(n) setTxtProgressBar(pb, n)
@@ -145,7 +156,6 @@ for (st in 1:ncol(L01)) {
   }
 
   close(pb)
-  stopCluster(cl)
 
   errors <- sapply(results, function(x) !is.null(x$error))
   if (any(errors)) {
@@ -179,12 +189,7 @@ for (st in 1:ncol(meas)) {
   Y <- ts(meas[, st], freq = m)
   NWP <- ts(pred[, st], freq = m)
 
-  # Setup parallel
-  cl <- makeCluster(ncores)
-  registerDoSNOW(cl)
-  clusterEvalQ(cl, { library(thief) })
-  clusterExport(cl, c("Y", "NWP", "m", "k.v", "k.s", "Mk.v",
-                       "train.days", "forecast.horizon"))
+  clusterExport(cl, c("Y", "NWP"), envir = .GlobalEnv)
 
   pb <- txtProgressBar(max = n_rep, style = 3)
   progress_fn <- function(n) setTxtProgressBar(pb, n)
@@ -249,7 +254,6 @@ for (st in 1:ncol(meas)) {
   }
 
   close(pb)
-  stopCluster(cl)
 
   errors <- sapply(results, function(x) !is.null(x$error))
   if (any(errors)) {
@@ -260,6 +264,8 @@ for (st in 1:ncol(meas)) {
   save(results, file = filename)
   cat(sprintf("  Saved to: %s\n", filename))
 }
+
+stopCluster(cl)
 
 cat("\n========================================\n")
 cat("ETS Base Forecasts Complete (Author Version)\n")

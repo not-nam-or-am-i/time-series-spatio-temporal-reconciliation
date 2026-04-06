@@ -33,9 +33,9 @@ rep_range <- 1:350
 # Parallel Processing
 # ----------------------------------------
 # for local machine
-ncores <- parallel::detectCores() - 1 # for local machine
+# ncores <- parallel::detectCores() - 1 # for local machine
 # for SLURM cluster
-# ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 8))
+ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 8))
 cat(sprintf("Using %d cores for parallel processing\n", ncores))
 
 # ----------------------------------------

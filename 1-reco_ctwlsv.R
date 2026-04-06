@@ -178,9 +178,9 @@ for (method in c("sarimax", "rf", "rf_nwp", "lgbm", "ets", "ets_author", "sarima
 
   # Setup parallel processing
   # for local machine
-  cl <- makeCluster(ncores)
+  # cl <- makeCluster(ncores)
   # for SLURM cluster
-  # cl <- parallel::makeCluster(ncores, type = "PSOCK")
+  cl <- parallel::makeCluster(ncores, type = "PSOCK")
   registerDoSNOW(cl)
 
   clusterEvalQ(cl, {

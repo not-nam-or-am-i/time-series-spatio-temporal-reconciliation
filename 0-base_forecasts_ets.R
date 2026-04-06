@@ -138,9 +138,9 @@ extract_yhat_from_thief <- function(frc_forecast, k.v, Mk.v, k.s, forecast_horiz
 cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
 
 # for local machine
-cl <- makeCluster(ncores)
+# cl <- makeCluster(ncores)
 # for SLURM cluster
-# cl <- parallel::makeCluster(ncores, type = "PSOCK")
+cl <- parallel::makeCluster(ncores, type = "PSOCK")
 registerDoSNOW(cl)
 
 clusterExport(cl, c("m", "h", "k.v", "k.s", "Mk.v", "train.days", "obs_per_day",

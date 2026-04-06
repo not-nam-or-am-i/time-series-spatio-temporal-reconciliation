@@ -91,9 +91,9 @@ cat(sprintf("  Res.insamp rows: %d (residuals, %d training days)\n", n_res_rows,
 cat(sprintf("\nSetting up parallel processing with %d cores...\n", ncores))
 
 # for local machine
-cl <- makeCluster(ncores)
+# cl <- makeCluster(ncores)
 # for SLURM cluster
-# cl <- parallel::makeCluster(ncores, type = "PSOCK")
+cl <- parallel::makeCluster(ncores, type = "PSOCK")
 registerDoSNOW(cl)
 
 clusterExport(cl, c("m", "h", "k.v", "train.days", "obs_per_day",
