@@ -33,9 +33,9 @@ rep_range <- 1:350
 # Parallel Processing
 # ----------------------------------------
 # for local machine
-# ncores <- parallel::detectCores() - 1 # for local machine
+ncores <- parallel::detectCores() - 1 # for local machine
 # for SLURM cluster
-ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 8))
+# ncores <- as.integer(Sys.getenv("SLURM_CPUS_PER_TASK", unset = 8))
 cat(sprintf("Using %d cores for parallel processing\n", ncores))
 
 # ----------------------------------------
@@ -45,6 +45,7 @@ dir_sarimax <- "./Results_SARIMAX"
 dir_rf <- "./Results_RF"
 dir_rf_nwp <- "./Results_RF_NWP"
 dir_lgbm <- "./Results_LGBM"
+dir_lgbm_nwp <- "./Results_LGBM_NWP"
 dir_ets <- "./Results_ETS"
 dir_ets_author <- "./Results_ETS_Author"
 dir_sarimax_nwp <- "./Results_SARIMAX_NWP"
@@ -52,11 +53,13 @@ dir_ctwlsv_sarimax <- "./results_ctwlsv_sarimax"
 dir_ctwlsv_rf <- "./results_ctwlsv_rf"
 dir_ctwlsv_rf_nwp <- "./results_ctwlsv_rf_nwp"
 dir_ctwlsv_lgbm <- "./results_ctwlsv_lgbm"
+dir_ctwlsv_lgbm_nwp <- "./results_ctwlsv_lgbm_nwp"
 dir_ctwlsv_ets <- "./results_ctwlsv_ets"
 dir_ctbu_sarimax <- "./results_ctbu_sarimax"
 dir_ctbu_rf <- "./results_ctbu_rf"
 dir_ctbu_rf_nwp <- "./results_ctbu_rf_nwp"
 dir_ctbu_lgbm <- "./results_ctbu_lgbm"
+dir_ctbu_lgbm_nwp <- "./results_ctbu_lgbm_nwp"
 dir_ctbu_ets <- "./results_ctbu_ets"
 dir_ctwlsv_ets_author <- "./results_ctwlsv_ets_author"
 dir_ctbu_ets_author <- "./results_ctbu_ets_author"
@@ -65,10 +68,10 @@ dir_ctbu_sarimax_nwp <- "./results_ctbu_sarimax_nwp"
 dir_output <- "./output"
 
 # Create directories if they don't exist
-dirs <- c(dir_sarimax, dir_rf, dir_rf_nwp, dir_lgbm, dir_ets,
+dirs <- c(dir_sarimax, dir_rf, dir_rf_nwp, dir_lgbm, dir_lgbm_nwp, dir_ets,
           dir_ets_author, dir_sarimax_nwp,
-          dir_ctwlsv_sarimax, dir_ctwlsv_rf, dir_ctwlsv_rf_nwp, dir_ctwlsv_lgbm, dir_ctwlsv_ets,
-          dir_ctbu_sarimax, dir_ctbu_rf, dir_ctbu_lgbm, dir_ctbu_ets,
+          dir_ctwlsv_sarimax, dir_ctwlsv_rf, dir_ctwlsv_rf_nwp, dir_ctwlsv_lgbm, dir_ctwlsv_lgbm_nwp, dir_ctwlsv_ets,
+          dir_ctbu_sarimax, dir_ctbu_rf, dir_ctbu_lgbm, dir_ctbu_lgbm_nwp, dir_ctbu_ets,
           dir_ctbu_rf_nwp,
           dir_ctwlsv_ets_author, dir_ctbu_ets_author,
           dir_ctwlsv_sarimax_nwp, dir_ctbu_sarimax_nwp,

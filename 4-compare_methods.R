@@ -110,6 +110,7 @@ cat("  - SARIMAX_BASE: SARIMAX with NWP as exogenous variable\n")
 cat("  - RF_BASE: Random Forest (NWP + lag + calendar features)\n")
 cat("  - RF_NWP_BASE: Random Forest (lag/rolling/calendar only) with L2 hourly replaced by NWP\n")
 cat("  - LGBM_BASE: LightGBM (NWP + lag + calendar features)\n")
+cat("  - LGBM_NWP_BASE: LightGBM with L2 hourly (k=1) replaced by NWP (post-process)\n")
 cat("  - ETS_BASE: ETS (per-level via thief, NWP hybrid at L2)\n")
 cat("  - ETS_AUTHOR_BASE: ETS (original author code, no clipping)\n")
 cat("  - SARIMAX_NWP_BASE: SARIMAX with NWP hourly replacement at L2 + SNTZ\n")
@@ -117,6 +118,7 @@ cat("  - CTWLSV_SARIMAX: Cross-temporal WLSV reconciled SARIMAX\n")
 cat("  - CTWLSV_RF: Cross-temporal WLSV reconciled RF\n")
 cat("  - CTWLSV_RF_NWP: Cross-temporal WLSV reconciled RF-NWP\n")
 cat("  - CTWLSV_LGBM: Cross-temporal WLSV reconciled LightGBM\n")
+cat("  - CTWLSV_LGBM_NWP: Cross-temporal WLSV reconciled LightGBM+NWP\n")
 cat("  - CTWLSV_ETS: Cross-temporal WLSV reconciled ETS\n")
 cat("  - CTWLSV_ETS_AUTHOR: Cross-temporal WLSV reconciled ETS (author)\n")
 cat("  - CTWLSV_SARIMAX_NWP: Cross-temporal WLSV reconciled SARIMAX+NWP\n")
@@ -124,6 +126,7 @@ cat("  - CTBU_SARIMAX: Bottom-up temporal reconciled SARIMAX\n")
 cat("  - CTBU_RF: Bottom-up temporal reconciled RF\n")
 cat("  - CTBU_RF_NWP: Bottom-up temporal reconciled RF-NWP\n")
 cat("  - CTBU_LGBM: Bottom-up temporal reconciled LightGBM\n")
+cat("  - CTBU_LGBM_NWP: Bottom-up temporal reconciled LightGBM+NWP\n")
 cat("  - CTBU_ETS: Bottom-up temporal reconciled ETS\n")
 cat("  - CTBU_ETS_AUTHOR: Bottom-up temporal reconciled ETS (author)\n")
 cat("  - CTBU_SARIMAX_NWP: Bottom-up temporal reconciled SARIMAX+NWP\n\n")
@@ -254,6 +257,15 @@ lgbm_comparison <- summary_stats %>%
 cat("\nLightGBM: Base vs Reconciled nRMSE:\n")
 print(as.data.frame(lgbm_comparison), row.names = FALSE)
 
+# Compare base vs reconciled for LightGBM+NWP
+lgbm_nwp_comparison <- summary_stats %>%
+  filter(method %in% c("lgbm_nwp_base", "ctwlsv_lgbm_nwp", "ctbu_lgbm_nwp")) %>%
+  select(method, level, freq, mean_nRMSE) %>%
+  pivot_wider(names_from = method, values_from = mean_nRMSE)
+
+cat("\nLightGBM+NWP: Base vs Reconciled nRMSE:\n")
+print(as.data.frame(lgbm_nwp_comparison), row.names = FALSE)
+
 # Compare base vs reconciled for ETS
 ets_comparison <- summary_stats %>%
   filter(method %in% c("ets_base", "ctwlsv_ets", "ctbu_ets")) %>%
@@ -300,6 +312,15 @@ sarimax_vs_nwp <- summary_stats %>%
 
 cat("\nSARIMAX vs SARIMAX+NWP (base nRMSE):\n")
 print(as.data.frame(sarimax_vs_nwp), row.names = FALSE)
+
+# Compare LGBM vs LGBM+NWP
+lgbm_vs_lgbm_nwp <- summary_stats %>%
+  filter(method %in% c("lgbm_base", "lgbm_nwp_base")) %>%
+  select(method, level, freq, mean_nRMSE) %>%
+  pivot_wider(names_from = method, values_from = mean_nRMSE)
+
+cat("\nLGBM vs LGBM+NWP (base nRMSE):\n")
+print(as.data.frame(lgbm_vs_lgbm_nwp), row.names = FALSE)
 
 # ----------------------------------------
 # Save Summary Report as Text
