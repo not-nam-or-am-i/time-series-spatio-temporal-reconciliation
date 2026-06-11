@@ -90,7 +90,7 @@ cat(sprintf("  S matrix: %d x %d\n", nrow(hts_info$S), ncol(hts_info$S)))
 # Temporal Hierarchy
 # ----------------------------------------
 # m = 24: Seasonal period (hours per day)
-# h = 2: Forecast horizon (days)
+# h: Forecast horizon (days), from config.R
 # Aggregation levels k: {1, 2, 3, 4, 6, 8, 12, 24}
 
 thf_info <- FoReco::thf_tools(m = m, h = h)

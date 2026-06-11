@@ -372,8 +372,13 @@ cat("- L2: Bottom-level stations (318 series)\n\n")
 
 cat("TEMPORAL RESOLUTION:\n")
 cat("--------------------\n")
-cat("- Hourly: k=1 (48 forecasts per replication)\n")
-cat("- Daily: k=24 (2 forecasts per replication)\n\n")
+cat("- Hourly: k=1 (24 forecasts per replication, operating day only)\n")
+cat("- Daily: k=24 (1 forecast per replication, operating day only)\n\n")
+
+cat("EVALUATION:\n")
+cat("-----------\n")
+cat(sprintf("- Forecast horizon: %d days; only day-%d (operating day) forecasts\n", h, eval_day))
+cat("  are evaluated (Di Fonzo & Girolimetto 2023, Sec. 4)\n\n")
 
 cat("========================================\n")
 cat("RESULTS TABLES\n")

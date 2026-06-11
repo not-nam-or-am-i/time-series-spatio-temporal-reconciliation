@@ -128,7 +128,9 @@ See [TEMPORAL_HIERARCHY_FORMAT.md](TEMPORAL_HIERARCHY_FORMAT.md) for the full te
 
 ## Evaluation Metrics
 
-All metrics are computed by pooling forecasts across all 350 replications, then calculating a single metric value per (method, level, frequency) combination.
+Following Di Fonzo & Girolimetto (2023, Sec. 4), forecasts are generated for h=2 days but **only the day-2 ("operating day") forecasts are evaluated** (`eval_day` in `config.R`). Day 1 serves as lead time between the forecast submission deadline and the operating day; its forecasts are discarded at evaluation.
+
+All metrics are computed by pooling the operating-day forecasts across all 350 replications, then calculating a single metric value per (method, level, frequency) combination.
 
 | Metric | Formula | Interpretation |
 |--------|---------|---------------|

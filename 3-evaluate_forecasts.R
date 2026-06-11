@@ -60,19 +60,21 @@ cat(sprintf("Loaded %d series (%d aggregated + %d bottom-level)\n",
 get_actual_values <- function(rp, k, all_meas) {
   obs_per_day <- m
   start_idx <- (rp - 1) * obs_per_day + 1
-  test_start <- start_idx + train.days * obs_per_day
-  test_end <- test_start + h * obs_per_day - 1
+  # Operating-day evaluation (paper, Sec. 4): only day `eval_day` of the
+  # h-day horizon is evaluated.
+  test_start <- start_idx + (train.days + eval_day - 1) * obs_per_day
+  test_end <- test_start + obs_per_day - 1
 
   if (test_end > nrow(all_meas)) {
     return(NULL)
   }
 
   # Get hourly actuals (use drop = FALSE to preserve matrix)
-  hourly_actuals <- all_meas[test_start:test_end, , drop = FALSE]  # 48 x 324
+  hourly_actuals <- all_meas[test_start:test_end, , drop = FALSE]  # 24 x 324
 
   # Aggregate temporally if k > 1
   if (k > 1) {
-    n_periods <- (h * m) / k  # Number of k-hour periods
+    n_periods <- m / k  # Number of k-hour periods in the operating day
     agg_actuals <- matrix(NA, nrow = n_periods, ncol = ncol(hourly_actuals))
 
     for (p in 1:n_periods) {
@@ -97,16 +99,21 @@ extract_forecasts_at_k <- function(reco_results, rp, k) {
     return(NULL)
   }
 
-  fc_matrix <- reco_results[[rp]]$free
+  # Use the non-negative SNTZ forecasts (paper, Table 6) when available.
+  # $nn is only computed when $free contains negatives; otherwise $free is
+  # already non-negative and identical to the SNTZ result.
+  res <- reco_results[[rp]]
+  fc_matrix <- if (!is.null(res$nn)) res$nn else res$free
 
   # Extract rows corresponding to aggregation level k
   # The structure is: for each day, k levels are ordered 24, 12, 8, 6, 4, 3, 2, 1
   k_order <- c(24, 12, 8, 6, 4, 3, 2, 1)
 
   # Calculate row indices for k
+  # Operating-day evaluation: only day `eval_day` of the h-day horizon
   result <- c()
 
-  for (day in 1:h) {
+  for (day in eval_day) {
     # Starting row for this day
     day_start <- (day - 1) * sum(m / k_order) + 1
 
@@ -263,16 +270,15 @@ for (method_info in methods) {
       agg_files_ordered <- agg_files_ordered[agg_files_ordered != ""]
 
       col_idx <- 1
-      for (f in agg_files_ordered) {
+      for (f in c(agg_files_ordered, bottom_files)) {
         load(f)
         if (rp <= length(results) && !is.null(results[[rp]]$Y.hat)) {
-          Yhat_full[, col_idx] <- results[[rp]]$Y.hat
-        }
-        col_idx <- col_idx + 1
-      }
-      for (f in bottom_files) {
-        load(f)
-        if (rp <= length(results) && !is.null(results[[rp]]$Y.hat)) {
+          if (length(results[[rp]]$Y.hat) != nrow(Yhat_full)) {
+            stop(sprintf(
+              "Y.hat length mismatch in %s (rep %d): got %d, expected %d. File from a different h setting?",
+              f, rp, length(results[[rp]]$Y.hat), nrow(Yhat_full)
+            ))
+          }
           Yhat_full[, col_idx] <- results[[rp]]$Y.hat
         }
         col_idx <- col_idx + 1
@@ -299,7 +305,7 @@ for (method_info in methods) {
   for (k in c(1, 24)) {  # Focus on hourly (k=1) and daily (k=24)
 
     freq_label <- ifelse(k == 1, "Hourly", "Daily")
-    n_periods <- (h * m) / k  # 48 for k=1, 2 for k=24
+    n_periods <- m / k  # Operating day only: 24 for k=1, 1 for k=24
 
     # Initialize storage for pooled data (per series)
     n_series <- ncol(meas_full)
@@ -334,6 +340,12 @@ for (method_info in methods) {
         if (!is.matrix(pers_hourly)) {
           pers_hourly <- matrix(pers_hourly, ncol = n_series)
         }
+
+        # Operating-day evaluation: take the day-`eval_day` block of the
+        # persistence forecast (day d of the test period is forecast by
+        # training day train.days - h + d).
+        pers_hourly <- pers_hourly[((eval_day - 1) * m + 1):(eval_day * m), ,
+                                   drop = FALSE]
 
         if (k > 1) {
           forecasts <- matrix(NA, nrow = n_periods, ncol = ncol(pers_hourly))

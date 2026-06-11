@@ -20,6 +20,11 @@ k.v <- c(1, 2, 3, 4, 6, 8, 12, 24)   # Temporal aggregation levels (divisors of 
 train.days <- 14                     # Training window (days)
 forecast.horizon <- 2                # Same as h (for clarity)
 
+# Evaluation day (Di Fonzo & Girolimetto 2023, Sec. 4): forecasts are
+# generated for h=2 days, but only day-2 ("operating day") forecasts are
+# evaluated, consistent with operational submission requirements.
+eval_day <- 2
+
 # ----------------------------------------
 # Replication Range
 # ----------------------------------------
