@@ -1,0 +1,36 @@
+\section{Base Forecasting Methods}\label{sec:base-methods}
+
+\subsection{Pipeline Overview}\label{sec:pipeline}
+
+[TBD: Base forecast generation $\rightarrow$ NWP post-processing (for $*$\_nwp variants) $\rightarrow$ CTWLSV/CTBU reconciliation $\rightarrow$ evaluation. See Figure~\ref{fig:pipeline}.]
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{2cm}[TBD: TikZ pipeline diagram]\vspace{2cm}}}
+    \caption{Forecasting pipeline from base methods to evaluation.}
+    \label{fig:pipeline}
+\end{figure}
+
+\subsection{SARIMAX}\label{sec:method-sarimax}
+[TBD: \texttt{auto.arima()} with NWP as exogenous regressor.]
+
+\subsection{SARIMAX with NWP Replacement}\label{sec:method-sarimax-nwp}
+[TBD: L2 hourly ($k=1$) replaced by NWP via post-processing.]
+
+\subsection{Random Forest}\label{sec:method-rf}
+[TBD: 500 trees, 12 features, recursive forecasting.]
+
+\subsection{Random Forest with NWP Replacement}\label{sec:method-rf-nwp}
+[TBD]
+
+\subsection{LightGBM}\label{sec:method-lgbm}
+[TBD: 300 rounds, same features as RF.]
+
+\subsection{LightGBM with NWP Replacement}\label{sec:method-lgbm-nwp}
+[TBD]
+
+\subsection{ETS (Author Implementation)}\label{sec:method-ets-author}
+[TBD: \texttt{thief:::th.forecast()} per temporal level, original author code from \citet{difonzo2023spatiotemporal}.]
+
+\subsection{ETS (This Implementation)}\label{sec:method-ets}
+[TBD: Per-level ETS with NWP hybrid at L2 hourly level.]

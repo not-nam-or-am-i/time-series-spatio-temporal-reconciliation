@@ -1,0 +1,34 @@
+\begin{table}[htbp]
+\centering
+\small
+\caption{Mean Skill score (\%) relative to PERS by base method, reconciliation approach, spatial level, and temporal resolution.}
+\label{tab:skill}
+\begin{tabular}{llrrrrrr}
+\toprule
+Base method & Reconciliation & L0 H & L0 D & L1 H & L1 D & L2 H & L2 D \\
+\midrule
+PERS & --- & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 & 0.00 \\
+\addlinespace
+SARIMAX & CTWLSV & 13.23 & 44.24 & 17.53 & 37.79 & 12.29 & 27.08 \\
+SARIMAX & CTBU & 11.44 & 44.01 & 16.24 & 37.71 & 11.61 & 27.01 \\
+SARIMAX+NWP & CTWLSV & 31.20 & 47.41 & 27.51 & 39.50 & 17.86 & 28.42 \\
+SARIMAX+NWP & CTBU & 31.09 & 47.68 & 27.26 & 39.71 & 17.81 & 28.58 \\
+\addlinespace
+RF & CTWLSV & 25.99 & 28.72 & 24.66 & 26.62 & 22.05 & 23.31 \\
+RF & CTBU & 25.80 & 28.59 & 24.54 & 26.55 & 21.98 & 23.25 \\
+RF+NWP & CTWLSV & 27.05 & 30.03 & 25.45 & 27.74 & 21.75 & 24.60 \\
+RF+NWP & CTBU & 26.11 & 30.13 & 24.71 & 27.89 & 21.35 & 24.69 \\
+\addlinespace
+LightGBM & CTWLSV & 30.10 & 35.29 & 26.49 & 30.32 & 17.95 & 21.57 \\
+LightGBM & CTBU & 29.69 & 35.05 & 26.30 & 30.23 & 17.86 & 21.52 \\
+LightGBM+NWP & CTWLSV & 28.09 & 34.32 & 25.17 & 30.10 & 17.03 & 22.98 \\
+LightGBM+NWP & CTBU & 25.73 & 33.74 & 23.61 & 29.89 & 16.29 & 22.85 \\
+\addlinespace
+ETS (author) & CTWLSV & 31.75 & 32.58 & 30.05 & 30.85 & 25.81 & 27.51 \\
+ETS (author) & CTBU & 32.12 & 33.67 & 30.24 & 31.82 & 25.85 & 28.02 \\
+ETS & CTWLSV & 31.64 & 32.40 & 30.00 & 30.73 & 25.77 & 27.44 \\
+ETS & CTBU & 31.98 & 33.41 & 30.17 & 31.63 & 25.80 & 27.91 \\
+\bottomrule
+\end{tabular}
+\end{table}
+

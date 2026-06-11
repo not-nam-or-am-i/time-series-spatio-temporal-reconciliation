@@ -1,0 +1,34 @@
+\begin{table}[htbp]
+\centering
+\small
+\caption{Mean nMBE (\%) by base method, reconciliation approach, spatial level, and temporal resolution.}
+\label{tab:nmbe}
+\begin{tabular}{llrrrrrr}
+\toprule
+Base method & Reconciliation & L0 H & L0 D & L1 H & L1 D & L2 H & L2 D \\
+\midrule
+PERS & --- & -0.08 & -0.08 & -0.06 & -0.06 & -0.08 & -0.08 \\
+\addlinespace
+SARIMAX & CTWLSV & -3.33 & -3.33 & -3.10 & -3.10 & -3.41 & -3.41 \\
+SARIMAX & CTBU & -3.49 & -3.49 & -3.24 & -3.24 & -3.57 & -3.57 \\
+SARIMAX+NWP & CTWLSV & -1.44 & -1.44 & -1.40 & -1.40 & -1.47 & -1.47 \\
+SARIMAX+NWP & CTBU & -1.25 & -1.25 & -1.18 & -1.18 & -1.28 & -1.28 \\
+\addlinespace
+RF & CTWLSV & -2.66 & -2.66 & -2.56 & -2.56 & -2.69 & -2.69 \\
+RF & CTBU & -2.72 & -2.72 & -2.63 & -2.63 & -2.75 & -2.75 \\
+RF+NWP & CTWLSV & -1.70 & -1.70 & -1.65 & -1.65 & -1.72 & -1.72 \\
+RF+NWP & CTBU & -1.63 & -1.63 & -1.58 & -1.58 & -1.64 & -1.64 \\
+\addlinespace
+LightGBM & CTWLSV & -1.29 & -1.29 & -1.24 & -1.24 & -1.31 & -1.31 \\
+LightGBM & CTBU & -1.35 & -1.35 & -1.29 & -1.29 & -1.37 & -1.37 \\
+LightGBM+NWP & CTWLSV & 0.24 & 0.24 & 0.23 & 0.23 & 0.23 & 0.23 \\
+LightGBM+NWP & CTBU & 0.31 & 0.31 & 0.31 & 0.31 & 0.31 & 0.31 \\
+\addlinespace
+ETS (author) & CTWLSV & 1.31 & 1.31 & 1.20 & 1.20 & 1.34 & 1.34 \\
+ETS (author) & CTBU & 1.43 & 1.43 & 1.32 & 1.32 & 1.45 & 1.45 \\
+ETS & CTWLSV & 1.42 & 1.42 & 1.30 & 1.30 & 1.45 & 1.45 \\
+ETS & CTBU & 1.57 & 1.57 & 1.45 & 1.45 & 1.60 & 1.60 \\
+\bottomrule
+\end{tabular}
+\end{table}
+

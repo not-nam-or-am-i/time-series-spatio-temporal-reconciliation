@@ -1,0 +1,46 @@
+\section{Data and Experimental Design}\label{sec:data-design}
+
+\subsection{Dataset}\label{sec:dataset}
+
+[TBD: \texttt{meas.csv} (318 PV stations, hourly, 365 days), \texttt{pred.csv} (NWP predictions).]
+
+\subsection{Spatial Hierarchy}\label{sec:spatial-hierarchy}
+
+[TBD: $L_0$ Total (1), $L_1$ Regions (5), $L_2$ Stations (318). See Figure~\ref{fig:spatial-hierarchy}.]
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.8\textwidth}{\centering\vspace{2cm}[TBD: TikZ spatial hierarchy diagram]\vspace{2cm}}}
+    \caption{Spatial hierarchy of the PV forecasting system.}
+    \label{fig:spatial-hierarchy}
+\end{figure}
+
+\subsection{Temporal Aggregation}\label{sec:temporal-aggregation}
+
+[TBD: Temporal levels $k \in \{1,2,3,4,6,8,12,24\}$, $k^*=60$. See Figure~\ref{fig:temporal-hierarchy}.]
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.8\textwidth}{\centering\vspace{2cm}[TBD: TikZ temporal aggregation diagram]\vspace{2cm}}}
+    \caption{Temporal aggregation levels from hourly ($k=1$) to daily ($k=24$).}
+    \label{fig:temporal-hierarchy}
+\end{figure}
+
+\subsection{Rolling-Origin Evaluation}\label{sec:rolling-origin}
+
+Following \citet{difonzo2023spatiotemporal}, we use a rolling-origin design with a 14-day training window (336 hours), a forecast horizon of two days (48 hourly forecasts), and 350 replications. As in the reference paper, forecast evaluation considers only the day-2 (\emph{operating day}) forecasts, consistent with operational forecast submission requirements. See Figure~\ref{fig:rolling-origin}.
+
+\begin{figure}[htbp]
+    \centering
+    \fbox{\parbox{0.8\textwidth}{\centering\vspace{2cm}[TBD: TikZ rolling-origin diagram]\vspace{2cm}}}
+    \caption{Rolling-origin evaluation scheme.}
+    \label{fig:rolling-origin}
+\end{figure}
+
+\subsection{Reconciliation Pipeline}\label{sec:reco-pipeline}
+
+[TBD: Two fixed reconciliation methods---CTWLSV (\texttt{FoReco::octrec}) and CTBU (\texttt{FoReco::thfrec})---reproduced from \citet{difonzo2023spatiotemporal}.]
+
+\subsection{Evaluation Metrics}\label{sec:metrics}
+
+[TBD: nRMSE, nMBE, Skill (vs.\ PERS), SMAPE. Formulas with nomenclature symbols.]

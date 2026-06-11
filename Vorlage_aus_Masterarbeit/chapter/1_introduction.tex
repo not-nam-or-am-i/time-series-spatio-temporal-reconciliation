@@ -1,0 +1,30 @@
+\section{Introduction}\label{sec:introduction}
+
+[TBD: Motivation for solar PV forecasting and spatio-temporal reconciliation.]
+
+\subsection{Research Question}\label{sec:research-question}
+
+This thesis addresses the following central research question:
+
+\begin{quote}
+    How do different base forecasting approaches compare when applied within the spatio-temporal reconciliation framework of \citet{difonzo2023spatiotemporal}?
+\end{quote}
+
+While \citet{difonzo2023spatiotemporal} fixed the base forecast (ETS with NWP) and compared reconciliation methods, this work reverses that design: we fix the two best-performing reconciliation methods from their study (CTWLSV and CTBU) and systematically compare eight base forecasting variants across four model families.
+
+\subsection{Contributions}\label{sec:contributions}
+
+[TBD after full experimental run. Planned contributions:]
+\begin{itemize}
+    \item A systematic comparison of statistical and machine-learning base forecasts under a common spatio-temporal hierarchy.
+    \item An assessment of NWP integration strategies (integrated vs.\ L2 hourly replacement) across model families.
+    \item A reproducible implementation extending the experimental setup of \citet{difonzo2023spatiotemporal}.
+\end{itemize}
+
+\subsection{Thesis Outline}\label{sec:outline}
+
+Chapter~\ref{sec:background} reviews hierarchical forecasting and reconciliation theory.
+Chapter~\ref{sec:data-design} describes the dataset, spatial and temporal hierarchy, and evaluation design.
+Chapter~\ref{sec:base-methods} specifies the eight base forecasting methods.
+Chapter~\ref{sec:results} presents and discusses the results.
+Chapter~\ref{sec:conclusion} concludes with limitations and outlook.

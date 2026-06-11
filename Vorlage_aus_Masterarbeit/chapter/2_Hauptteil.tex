@@ -1,0 +1,229 @@
+\section{Hauptteil}
+
+Dieses Kapitel ist repräsentativ für alle Kapitel des Hauptteils und soll im Wesentlichen die richtige Verwendung der Formatvorlage erläutern. Der Hauptteil setzt sich in der Regel aus mehreren \textbf{Kapiteln der Überschriftebene 1} (und deren Unterkapiteln) zusammen.\\
+\\
+\textbf{\uline{Hinweise}}\\
+Nennen Sie die Überschrift des Hauptteils \uline{nicht} „Hauptteil“, sondern wählen Sie eine für die Inhalte des Kapitels angemessene und eindeutige Überschrift! Ferner besteht der Hauptteil oft aus mehreren Unterkapitel, die entsprechend der Fragestellung aufgestellt werden. Eine mögliche Kapitelfolge im Hauptteil Ihrer Arbeit kann je nach Thema in etwa so aussehen:
+\begin{itemize}
+    \item Problemstellung
+    \item Datenbeschreibung
+    \item Statistisches Modell
+    \item Statistische Methoden
+    \item Simulationen
+    \item Auswertung
+\end{itemize}
+
+Diese Kapitelüberschriften dienen lediglich der Inspiration und sollten je nach Thema und Schwerpunkt der Arbeit individuell gewählt werden. Beispielsweise legen eher theoretische Arbeiten einen größeren Schwerpunkt auf die Methodik und Kapitel wie Datenbeschreibung könnten hier entfallen.
+\\
+
+\subsection{Textkörper und Aufzählungen}
+Die Formatierung des Textes erfolgt in \LaTeX weitestgehend automatisch.
+Die Standardformatierung des \textbf{Textkörpers} ist:
+\begin{itemize}
+    \item Schriftart TimesNewRoman
+    \item Schriftgröße 11 pt mit
+    \item 1,3-fachem Zeilenabstand 
+    \item im Blocksatz und
+    \item mit automatischer Silbentrennung 
+\end{itemize}
+
+\noindent
+Untergliedern Sie Ihre Textkörper in \textbf{strukturierende Absätze}. Ein Absatz sollte einen Gedankengang umfassen und den Leser beim Verständnis des Textes unterstützten. 
+
+Die erste Zeile eines Absatzes ist zur besseren Lesbarkeit eingerückt. Dies gilt nicht für Absätze, die sich unmittelbar unter Überschriften, Abbildungen, Tabellen o. ä. befinden. Die automatische Einrückung kann in \LaTeX durch den Befehl \verb!\noindent! unterdrückt werden.  \\
+
+\noindent
+\textbf{\uline{Hinweise}}\\
+Absätze sollten nicht nur aus einem Satz bestehen. Vermeiden Sie es, einzelne Zeilen am Anfang oder Ende eines Absatzes auf einer anderen Seite zu platzieren (sogenannte "Witwen-" oder "Waisenzeilen"). In \LaTeX kann dies erreicht werden, indem man das Paket \verb!\usepackage{nowidow}! in die Präambel des Dokuments einfügt.\\
+
+Aufzählungen und nummerierte Listen bieten die Möglichkeit der besseren Strukturierung der Textkörper und der abwechslungsreichen Verdeutlichung von Inhalten.\\  
+
+\noindent
+\uline{Beispiel für eine Aufzählung:} 
+\begin{itemize}
+    \item Hauptpunkt 1
+    \begin{itemize}
+        \item Unterpunkt 1
+        \item Unterpunkt2
+    \end{itemize}
+    \item Hauptpunkt 2
+    \begin{itemize}
+        \item Unterpunkt 1
+        \item Unterpunkt2
+        \item Unterpunkt 3
+    \end{itemize}
+\end{itemize}
+
+\noindent
+\uline{Beispiel für eine Liste: }
+\begin{enumerate}
+    \item Hauptpunkt 1
+    \begin{enumerate}
+        \item Unterpunkt 1
+        \item Unterpunkt 2
+    \end{enumerate}
+    \item Hauptpunkt 2
+\end{enumerate}
+Hier geht es dann ohne Einzug weiter!\\
+\\
+\textbf{\uline{Hinweise}}
+Die Symbolik der Aufzählungszeichen ist frei wählbar: Wichtig ist jedoch, dass sie über die gesamte Arbeit hinweg einheitlich (!) verwendet wird. 
+
+\subsection{Überschriften}
+Die Überschriften werden mittels der Befehle \verb!\section, \subsection, \subsubsection! einheitlich gestaltet.\\
+\\
+\textbf{\uline{Hinweise}}
+\begin{itemize}
+    \item Es sollte nicht mehr als drei Gliederungsebenen geben.
+    \item Hauptkapitel (\verb!\section!) sollten auf einer neuen Seite beginnen.
+    \item Um über die drei Ebenen hinaus eine Abgrenzung von Inhalten darzustellen, können Zwischenüberschriften ohne Nummerierung eingeführt werden, wie in diesem Dokument beispielsweise die Formatvorlage „Zwischenüberschriften“ vorgibt. 
+    \item Unter einem Kapitel müssen, wenn dann, mindestens zwei Unterüberschriften aufgeführt sein. 
+
+
+\uline{Beispiel:}
+\begin{itemize}
+    \item \textbf{Richtig:} 2.1 Kapitelüberschrift
+    
+    \hspace{20mm} 2.1.1 Unterkapitelüberschrift
+    
+     \hspace{20mm} 2.1.2 Unterkapitelüberschrift
+     
+     \hspace{14mm} 2.2 Kapitelüberschrift
+    \item \textbf{Falsch:} 2.1 Kapitelüberschrift
+    
+    \hspace{20mm} 2.1.1 Unterkapitelüberschrift
+    
+    \hspace{14mm} 2.2 Kapitelüberschrift
+\end{itemize}
+
+\item Zwischen allen Kapitel- oder Unterkapitelüberschriften ist \textbf{stets ein verknüpfender Überleitungstext} einzufügen. D. h. auch zwischen einer Kapitelüberschrift (Bsp. 2.1) und einer Unterkapitelkapitelüberschrift (Bsp. 2.1.1) wird stets ein Textkörper eingeführt, der die vorherigen und/oder folgenden Inhalte zusammenfasst bzw. einleitet. 
+\end{itemize}
+
+\subsection{Abbildungen}
+
+Alle Abbildungen und Bildunterschriften sind einheitlich auszurichten. Achten Sie auf ein sinnvolles und einheitliches Größenverhältnis von Abbildungen zueinander und zum Fließtext!
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width = 0.6\textwidth]{Pictures/stat_meme.png}
+    \caption{Beispielabbildung (Quelle: Das Internet)}
+    \label{fig:Beispiel1}
+\end{figure}
+\noindent
+Hier geht der Fließtext ohne Einzug weiter! Im Fließtext ist in jeden Fall Bezug auf die Abbildung zu nehmen, dabei ist auch die laufende Nummerierung der Abbildung zu nennen!\\
+\\
+Abbildungen werden mit dem Befehl \verb!\begin{figure}! begonnen und anschließend mit dem Befehl \verb!\end{figure}! beendet. Der Zusatz [H] stellt sicher, dass die Abbildung genau an dieser Stelle im Text eingefügt wird (dazu wird das Paket \verb!\usepackage{float}! verwendet). Jede Abbildung wird mit dem Befehl \verb!\caption! beschriftet und mit dem Befehl \verb!\label! gelabelt. Mit dem Label kann später mittels des Befehls \verb!\ref! auf die entsprechende Abbildung verwiesen werden. 
+
+\begin{itemize}
+    \item Jede Beschriftung wird mit der Bezeichnung \textbf{„Abbildung“} initiiert. Anschließend folgt die fortlaufende Abbildungsnummer.
+    \item Die Beschriftung muss eine Quellenangabe und/oder den Zusatz „(eigene Darstellung)“ deklarieren.
+    \item Die Formatierung rund um Abbildungen und Tabellen wird von \LaTeX weitestgehend automatisch korrekt umgesetzt.
+\end{itemize}
+
+\noindent
+\textbf{\uline{Hinweise}}
+\begin{itemize}
+    \item Grundsätzlich ist eine Selbstgestaltung von Abbildungen (z.~B. in PowerPoint oder Visio) vorzuziehen. Scans, Screenshots oder „Copy-paste“ Abbildungen sind zu vermeiden! \item Die Auflösung der Abbildungen sollte ausreichend gut für die gewählte Größe sein. Besonders gute Auflösungen bieten Vektorgrafiken (z.B. .pdf oder .eps). 
+\end{itemize}
+
+\subsection{Tabellen}
+Tabellen können über den Befehl \verb!\begin{table}! bzw. \verb!\end{table}! eingefügt werden. Der Zusatz [H] stellt sicher, dass die Tabelle genau an dieser Stelle im Text eingefügt wird. Jede Tabelle wird mit dem Befehl \verb!\caption! beschriftet und mit dem Befehl \verb!\label! gelabelt. Mit dem Label kann später mittels des Befehls \verb!\ref! auf die entsprechende Tabelle verwiesen werden. Die Ausrichtung des Textes in den einzelnen Zellen wird mittels der Buchstaben $l$ (left), $r$ (right) und $c$ (centered) definiert. Linien zwischen den Spalten werden mittels $|$ eingefügt, während Trennlinien zwischen den Zeilen über den Befehl \verb!\hline! nach jeder Zeile hinzugefügt werden.
+
+\begin{table}[H]
+    \centering
+    \caption{Beispieltabelle (eigene Darstellung)}
+    \begin{tabular}{|l|l|}
+    \hline
+        Tabellenüberschrift 1 &  Tabellenüberschrift 2\\
+        \hline
+         Beispielinhalt & Beispielinhalt\\
+         \hline
+         Beispielinhalt & Beispielinhalt\\
+         \hline
+    \end{tabular}
+    \label{tab:my_label}
+\end{table}
+\noindent
+Hier geht der Fließtext (nach einer Leerzeile) ohne Einzug weiter! Im Fließtext ist in jedem Fall Bezug auf die Tabelle zu nehmen, dabei ist auch die laufende Nummerierung der Abbildung zu nennen!\\
+\newpage
+
+\noindent
+\textbf{\uline{Hinweise}}
+\begin{itemize}
+    \item Tabellen sind einheitlich auszurichten.
+    \item Eine Tabelle sollte sich nicht über zwei Seiten erstrecken. Hier kann es eine mögliche Lösung sein, die Ergebnisse stattdessen in Grafiken darzustellen.
+    \item Sollte eine mehrseitige Darstellung unvermeidbar sein, dann ist der Tabellenkopf auf der Folgeseite zu wiederholen verwenden sie dazu das Paket \verb!longtable! (Für mehr Informationen siehe \url{https://www.namsu.de/Extra/pakete/Longtable.html}).
+    \item Grundsätzlich ist eine Selbstgestaltung von Tabellen vorzuziehen. Scans, Screenshots oder „Copy-paste“ Tabellen sind zu vermeiden! 
+\end{itemize}
+
+\subsection{Formeln und Symbole}
+Wichtige Formeln sollten in einem eigenen Absatz, am Gleichheitszeichen ausgerichtet und mittig positioniert werden. Rechts von der Formel und rechtsbündig zum Fließtext ist eine fortlaufende Nummerierung der Formeln anzuführen (insbesondere wenn später auf diese Formel Bezug genommen wird). Dazu können beispielsweise die Befehle \verb!\begin{align}! und \verb! \end{align}! verwendet werden. Die Bedeutung der in der Formel genutzten Symbole ist im Fließtext zu nennen und ggf. im Symbolverzeichnis aufzuführen. Dies betrifft auch Standardnotationen wie z.~B. $^\top$  (transponiert) oder $z_{\alpha}$ (Quantil der Standardnormalverteilung). Hilfsfunktionen können im Fließtext mittels \verb!$$! aufgeführt werden.\\
+\uline{Beispiel:}
+
+\begin{align}\label{exEq}
+    t_{akt}= t_0 \cdot \left( 1+a \cdot\left( \frac{q}{q_{max} \cdot c} \right) ^b \right)
+\end{align}
+
+Im Text kann dann auf die Formeln mittels \verb!\eqref{}! verwiesen werden. Die Formel \eqref{exEq} dient dabei als Beispiel.
+
+\subsection{Abkürzungen}
+Die Verwendung von Abkürzungen ist im angemessenen Umfang erwünscht. 
+\begin{itemize}
+    \item Gängige Abkürzungen wie „z.~B.“, „u.~a.“ oder „z.~Zt.“ sind mit einem geschützten Leerzeichen zu verwenden.
+    \item Das geschützte Leerzeichen gewährleistet einen gleichmäßigen Abstand zwischen zusammenstehenden Buchstaben und verhindert eine Zeilentrennung an dieser Stelle. In \LaTeX werden geschützte Leerzeichen mit dem Symbol $\sim$ gekennzeichnet. 
+    \item Abkürzungen von Fachbegriffen, Vereinen, Gesetzen etc. sind bei der ersten Verwendung mit ihrer ausgeschrieben Form einzuführen. Beachte: Auf „s“ endende Abkürzungen im Plural („PCs“, „AGs“) sind zwar orthographisch korrekt, aber durch Ausschreibungen weitestgehend zu vermeiden.
+\end{itemize}
+\uline{Beispiel:}
+\\
+Die Standardabweichung (SD) ist ein Streungsmaß. Die SD wird häufig zur deskriptiven Beschreibung von Daten verwendet.
+
+\subsection{Fußnoten}
+
+Fußnoten sind sinnvoll, um den Fließtext mit erklärenden Anmerkungen zu ergänzen. Bezieht sich die Anmerkung auf ein bestimmtes Wort, ist die Fußnote direkt hinter diesem anzuführen. Bei einem Bezug auf einen oder mehrere Sätze wird sie hinter dem Satzzeichen gesetzt. Um eine Fußnote einzufügen, ist der Befehl \verb!\footnote{}! zu verwenden. Dabei wird der Text, der in der Fußnote erscheinen soll, zwischen die geschweiften Klammern geschrieben. Die Nummerierung der Fußnoten erfolgt automatisch.\footnote{Ich bin eine Fußnote.}
+
+\begin{itemize}
+    \item Als Fußnotenzeichen sind hochgestellte, über den gesamten Fließtext fortlaufende, arabische Ziffern zu nutzen.
+    \item Die Erläuterung der Fußnote ist auf der gleichen Seite anzuführen.
+    \item Fußnotentexte sollten mit einem Punkt abschließen. 
+\end{itemize}
+
+\subsection{Sonstige Hinweise}
+Die folgenden Unterkapitel fassen einige Hinweise zum Schreibstil, zur Verwendung des geschützten Leerzeichens sowie Fachbegriffen, Querverweisen und Formatvorlagen zusammen. 
+
+\subsubsection{Formatvorlagen}
+Es empfiehlt sich die Formatvorlagen aus dieser Datei zu nutzen! \LaTeX bietet eine einheitliche Formatierung, die vor Erstellung des Dokuments festgelegt werden kann. 
+
+\subsubsection{Sprache und Schreibstil}
+Ein grundlegendes Ziel einer wissenschaftlichen Ausarbeitung ist es, verstanden zu werden. In der Ausarbeitung ist eine sachlich-nüchterne, exakte, klare Sprache zu wählen, wobei folgende Grundregeln zu beachten sind:
+\begin{itemize}
+    \item Formulierung in kompakten, klar strukturierten Sätzen (keine „Endlos-Sätze“)
+    \item Umgangssprachliche Formulierungen vermeiden (z.~B. „man“, „kriegen“)
+    \item In deutscher Sprache: Vermeidung von Formulierungen, die auf Allgemeinplätze Hinweisen (z.~B. „wie allgemein bekannt…“, „es versteht sich von selbst, dass…“)
+    \item Keine Verwendung von Floskeln und Redewendung (z.~B. „Im Grunde genommen“, „unter den Nägeln brennen“)
+    \item Vermeidung nichtssagender Füllwörter (z.~B. „eigentlich")
+    \item Gezieltes und angemessenes Verwenden von Abkürzungen 
+    \item Verwendung des Modalverbs „wird“ statt „soll“ („hierdurch wird deutlich“)
+    \item Vermeidung der 1. Person („Ich“, „Wir“). Besser: Beschränkung auf die 3. Person.
+    \item Begriffe einheitlich und durchgängig verwenden (begriffliche Stetigkeit)
+    \item Bestimmte Formulierungen eignen sich nicht für Satzanfänge (z.~B. mathematische Formeln, "Und")
+    \item Sorgfältiger Einsatz von Fremdwörtern
+    \item Vorsichtiger Einsatz von englischen Begrifflichkeiten beim Verfassen einer Abschlussarbeit in deutscher Sprache. Obwohl es für einige Begriffe kaum deutsche Formulierungen gibt, sollte zu starkes "mischen"\ der Sprachen vermieden werden.
+\end{itemize}
+
+Folgendes ist bei der Niederschrift von Zahlenwerten zu beachten: 
+\begin{itemize}
+    \item Dezimalstellen werden mit einem Punkt dargestellt. Beachten Sie die einheitliche Angabe der Anzahl von Dezimalstellen!
+    \item Zahlen mit mehr als drei Stellen werden im Fließtext in dreistellige Gruppen gegliedert und jeweils durch ein Komma getrennt.\\
+    \uline{Beispiele: } 10,000; 456,257
+\end{itemize}
+
+Darüber hinaus sollte ein Kapitel nicht mit einer Aufzählung enden.
+
+\subsubsection{Zitation}
+Beachten Sie die Unterschiede zwischen den verschiedenen Formen von Zitaten im Text wie \citet{kaplan1958nonparametric}, \citep{kaplan1958nonparametric}. Bei Zitaten aus Büchern muss die Seitenzahlen angeben werden, wie z.~B. \citet[S.~123]{friedman2017elements}. Quellen werden in der literatur.bib Datei im BibTex Format verwaltet, dabei können Verwaltungsprogramme (Citavi, Zotero, Mendeley, Jabref, etc.) unterstützend sein. Die Bibtex Einträge können direkt über Google Scholar gefunden werden (Vorsicht: Nochmal Korrekturlesen).
+Wenn mehrere Quellen an der gleichen Stelle im Text verwendet werden, sollten diese logisch angeordnet werden (meist nach Erscheinungsdatum oder alphabetisch).
+
+Das Literaturverzeichnis wird durch \LaTeX automatisch erstellt. Im Literaturverzeichnis werden ausschließlich Quellen aufgeführt, die im Dokument verwendet worden sind.
+\subsubsection{Theoreme, Beweise und ähnliches}
+In theoretischeren bzw. mehr methodisch geprägten Arbeiten spielt die Einteilung in Theoreme, Korollare, Lemmas und so weiter eine wichtige Rolle. Häufig bietet es sich dabei an, diese Einteilung in einer späteren Phase der Arbeit noch einmal zu überprüfen, da die Bedeutung der einzelnen Ergebnisse eingeschätzt werden kann. Wichtig ist, dass vor und nach jedem Theorem, Lemma usw. eine passende Überleitung vorhanden ist. \\
+Beweise sollten für eine bessere Lesbarkeit in den Anhang verschoben werden. Dann sollte auf die Beweise im Anhang verwiesen werden. In einzelnen Situationen kann es aber sinnvoll sein, zumindest die Beweisidee im Hauptteil zu skizzieren. Insbesondere dann, wenn der Beweis über mehrere Seiten geht und ein kurzer Überblick für das Verständnis sinnvoll ist.  

@@ -3,3 +3,24 @@ Results_**
 info_reco.RData
 0-base_forecasts_ets_author_code.R
 *.sh
+check_results_integrity.R
+
+# macOS
+.DS_Store
+# LaTeX build output
+*.aux
+*.log
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.toc
+*.lof
+*.lot
+*.nlo
+*.bbl
+*.blg
+# Local run logs and backups
+*.log
+*_old.csv
+eval_day2*.log

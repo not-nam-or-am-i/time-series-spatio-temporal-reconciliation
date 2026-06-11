@@ -1,0 +1,162 @@
+% Thesis: A Comparison of Base Forecasting Approaches for Spatio-Temporal Reconciliation
+\input{resources/settings/settings}
+\input{resources/styles/adjustments}
+
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{color}
+\usepackage{listings}
+\usepackage{eso-pic}
+\usepackage[sf]{titlesec}
+\usepackage{acronym}
+\usepackage[normalem]{ulem}
+\usepackage{hyperref}
+\usepackage{pdfpages}
+\usepackage[toc,page]{appendix}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\floatstyle{plaintop}
+\restylefloat{table}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=magenta,
+    urlcolor=black,
+    pdftitle={Master's Thesis},
+    pdfpagemode=FullScreen,
+    citecolor=black,
+}
+
+\interfootnotelinepenalty=10000
+
+\newcommand\BackgroundPic{%
+\put(0,0){%
+\parbox[b][\paperheight]{\paperwidth}{%
+\vskip 2.5cm
+\centering
+\includegraphics[height=1.4cm,%
+keepaspectratio]{resources/images/logo_tudo.png}%
+\hspace{4cm}
+\includegraphics[height=1.4cm,%
+keepaspectratio]{resources/images/Logo_StatistikFK.pdf}
+\vfill
+}}}
+
+\include{titles/graduation}
+
+\thesisTitle{A Comparison of Base Forecasting Approaches for Spatio-Temporal Reconciliation}
+\authorFirstname{[TBD]}
+\authorLastname{[TBD]}
+\courseOfStudies{[TBD]}
+\matrikelnr{[TBD]}
+\registerDate{[TBD]}
+\submitDate{[TBD]}
+\firstExaminer{Prof.~Dr.~Markus~Pauly}
+\secondExaminer{[TBD]}
+
+\usepackage{nomencl}
+\makenomenclature
+\renewcommand{\nomname}{List of Symbols}
+
+\usepackage{fancyhdr}
+\fancypagestyle{custom}{%
+    \fancyhf{}
+    \fancyhead[L]{\slshape\nouppercase \leftmark}
+    \fancyhead[R]{\thepage}
+    \renewcommand{\headrulewidth}{0.4pt}
+}
+\pagestyle{custom}
+
+\begin{document}
+
+\pagenumbering{gobble}
+\AddToShipoutPicture{\BackgroundPic}
+\maketitle
+\newpage
+\ClearShipoutPicture
+
+\titleformat*{\section}{\Large\bfseries\sffamily}
+\titleformat*{\subsection}{\bfseries\sffamily}
+\titleformat*{\subsubsection}{\bfseries\sffamily}
+
+\setlength{\parindent}{0.63cm}
+
+% Abstract
+\pagenumbering{Roman}
+\section*{Abstract}
+\addcontentsline{toc}{section}{Abstract}
+[TBD: Context, research question, methods, key results after h=1 full run.]
+\newpage
+
+\tableofcontents
+\newpage
+
+% List of Abbreviations
+\section*{List of Abbreviations}
+\addcontentsline{toc}{section}{List of Abbreviations}
+\begin{acronym}[CTWLSV]
+ \acro{NWP}[NWP]{Numerical Weather Prediction}
+ \acro{PV}[PV]{Photovoltaic}
+ \acro{SARIMAX}[SARIMAX]{Seasonal Autoregressive Integrated Moving Average with eXogenous variables}
+ \acro{RF}[RF]{Random Forest}
+ \acro{LGBM}[LGBM]{Light Gradient Boosting Machine}
+ \acro{ETS}[ETS]{Exponential Smoothing State Space model}
+ \acro{CTWLSV}[CTWLSV]{Cross-Temporal Weighted Least Squares Variances reconciliation}
+ \acro{CTBU}[CTBU]{Cross-Temporal Bottom-Up reconciliation}
+ \acro{PERS}[PERS]{Persistence baseline forecast}
+ \acro{nRMSE}[nRMSE]{normalized Root Mean Square Error}
+ \acro{nMBE}[nMBE]{normalized Mean Bias Error}
+ \acro{SMAPE}[SMAPE]{Symmetric Mean Absolute Percentage Error}
+\end{acronym}
+\newpage
+
+% List of Symbols
+\addcontentsline{toc}{section}{List of Symbols}
+\nomenclature{$m$}{Seasonal period (hours per day, $m=24$)}
+\nomenclature{$h$}{Forecast horizon in days}
+\nomenclature{$k$}{Temporal aggregation factor}
+\nomenclature{$k^*$}{Total temporal periods per day across all aggregation levels ($k^*=60$)}
+\nomenclature{$\mathcal{S}$}{Spatial aggregation matrix ($324 \times 318$)}
+\nomenclature{$\hat{Y}$}{Forecast vector at all temporal levels (\texttt{Y.hat})}
+\nomenclature{$Y^{\mathrm{obs}}$}{Observed values}
+\nomenclature{$L_0$}{Spatial hierarchy level: Total (1 series)}
+\nomenclature{$L_1$}{Spatial hierarchy level: Regions (5 series)}
+\nomenclature{$L_2$}{Spatial hierarchy level: Stations (318 series)}
+\nomenclature{$\varepsilon$}{In-sample residuals (\texttt{Res.insamp})}
+\printnomenclature
+\newpage
+
+\listoffigures
+\addcontentsline{toc}{section}{List of Figures}
+\newpage
+
+\listoftables
+\addcontentsline{toc}{section}{List of Tables}
+\newpage
+
+\pagenumbering{arabic}
+\include{chapter/1_introduction}
+\newpage
+\include{chapter/2_background}
+\newpage
+\include{chapter/3_data_and_design}
+\newpage
+\include{chapter/4_base_methods}
+\newpage
+\include{chapter/5_results}
+\newpage
+\include{chapter/6_conclusion}
+\newpage
+
+\addcontentsline{toc}{section}{Bibliography}
+\bibliography{literatur}
+
+\include{chapter/X_appendix}
+\newpage
+
+\includepdf[pages={1}]{resources/Eidesstattliche_Versicherung.pdf}
+
+\end{document}

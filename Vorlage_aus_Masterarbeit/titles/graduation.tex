@@ -1,0 +1,59 @@
+\makeatletter
+\newcommand*{\thesisTitle}[1]{\gdef\@thesisTitle{#1}}
+\newcommand*{\firstExaminer}[1]{\gdef\@firstExaminer{#1}}
+\newcommand*{\secondExaminer}[1]{\gdef\@secondExaminer{#1}}
+\newcommand*{\matrikelnr}[1]{\gdef\@matrikelnr{#1}}
+\newcommand*{\registerDate}[1]{\gdef\@registerDate{#1}}
+\newcommand*{\submitDate}[1]{\gdef\@submitDate{#1}}
+\newcommand*{\courseOfStudies}[1]{\gdef\@courseOfStudies{#1}}
+\newcommand*{\authorLastname}[1]{\gdef\@authorLastname{#1}}
+\newcommand*{\authorFirstname}[1]{\gdef\@authorFirstname{#1}}
+
+\renewcommand*{\maketitle}{
+	\begin{titlepage}
+	    \centering
+		\newgeometry{left=3.5cm,right=2.5cm,top=8.2cm,bottom=1.0cm}
+			\begingroup
+				\fontsize{22pt}{22pt}\selectfont
+				{\bfseries Master's Thesis}
+			\endgroup
+
+			\vskip 2.2cm
+
+			\begingroup
+			\fontsize{22pt}{22pt}\selectfont
+			{\@thesisTitle}
+			\endgroup
+
+			\vskip 3.0cm
+
+			\begingroup
+			\fontsize{14pt}{18pt}\selectfont
+				{\@authorFirstname} {\@authorLastname} \\
+				Matriculation number: {\@matrikelnr} \\
+				Programme: {\@courseOfStudies} \\
+			\endgroup
+			
+			\vskip 1.0cm
+			
+			\begingroup
+			\fontsize{14pt}{18pt}\selectfont
+			    Issued on: \\
+				{\@registerDate} \\
+				Submitted on: \\
+				{\@submitDate} \\
+			\endgroup
+			
+			\vskip 1.2cm
+			
+			\begingroup
+			\fontsize{12pt}{14pt}\selectfont
+			    Supervisors: \\
+			    {\@firstExaminer} \\
+                {\@secondExaminer} \\
+			\endgroup
+
+		\restoregeometry
+	\end{titlepage}
+}
+\makeatother
